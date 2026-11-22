@@ -105,8 +105,13 @@ extension _WorkspaceActions on _MessageWorkspaceScreenState {
       builder: (_) => MemberManagementDialog(members: _view.members),
     );
     if (action == null || !mounted) return;
+    if (action.type == MemberManagementActionType.create) {
+      await _createMember(addToSelectedConversation: false);
+      return;
+    }
+    final member = action.member!;
     if (action.type == MemberManagementActionType.rename) {
-      final controller = TextEditingController(text: action.member.name);
+      final controller = TextEditingController(text: member.name);
       final name = await showDialog<String>(
         context: context,
         builder: (context) => AlertDialog(
@@ -129,9 +134,9 @@ extension _WorkspaceActions on _MessageWorkspaceScreenState {
         ),
       );
       controller.dispose();
-      if (name == null || name.isEmpty || name == action.member.name) return;
+      if (name == null || name.isEmpty || name == member.name) return;
       final renamed = await _workspace.renameMember(
-        memberId: action.member.id,
+        memberId: member.id,
         displayName: name,
       );
       if (_view.currentAuthor?.id == renamed.id) {
@@ -145,7 +150,7 @@ extension _WorkspaceActions on _MessageWorkspaceScreenState {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Remove ${action.member.name}?'),
+        title: Text('Remove ${member.name}?'),
         content: const Text(
           'The profile will no longer be selectable. Existing messages and history will keep their attribution.',
         ),
@@ -162,8 +167,8 @@ extension _WorkspaceActions on _MessageWorkspaceScreenState {
       ),
     );
     if (confirmed != true) return;
-    await _workspace.archiveMember(action.member.id);
-    if (_view.currentAuthor?.id == action.member.id) {
+    await _workspace.archiveMember(member.id);
+    if (_view.currentAuthor?.id == member.id) {
       await _changeCurrentMember(null);
     } else {
       await _loadWorkspace(selectId: _view.selected?.id);
