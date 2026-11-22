@@ -2,11 +2,16 @@ import 'package:material_ui/material_ui.dart';
 import 'package:note_app/shared/models/system_member.dart';
 import 'package:note_app/shared/widgets/member_avatar.dart';
 
-enum MemberManagementActionType { rename, remove }
+enum MemberManagementActionType { create, rename, remove }
 
 class MemberManagementAction {
+  const MemberManagementAction.create()
+    : member = null,
+      type = MemberManagementActionType.create;
+
   const MemberManagementAction({required this.member, required this.type});
-  final SystemMember member;
+
+  final SystemMember? member;
   final MemberManagementActionType type;
 }
 
@@ -59,6 +64,14 @@ class MemberManagementDialog extends StatelessWidget {
             ),
     ),
     actions: [
+      FilledButton.icon(
+        onPressed: () => Navigator.pop(
+          context,
+          const MemberManagementAction.create(),
+        ),
+        icon: const Icon(Icons.person_add_outlined),
+        label: const Text('Add member'),
+      ),
       TextButton(
         onPressed: () => Navigator.pop(context),
         child: const Text('Close'),

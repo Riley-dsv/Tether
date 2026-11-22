@@ -150,14 +150,14 @@ class _MessageWorkspaceScreenState extends State<MessageWorkspaceScreen> {
     await _loadWorkspace(selectId: _view.selected!.id);
   }
 
-  Future<void> _createMember() async {
+  Future<void> _createMember({bool addToSelectedConversation = true}) async {
     final name = await showDialog<String>(
       context: context,
       builder: (_) => const CreateMemberDialog(),
     );
     if (name == null) return;
     final member = await _workspace.createMember(name);
-    if (_view.selected != null) {
+    if (addToSelectedConversation && _view.selected != null) {
       await _workspace.addMemberToConversation(
         conversationId: _view.selected!.id,
         memberId: member.id,
