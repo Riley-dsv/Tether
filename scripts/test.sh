@@ -19,8 +19,11 @@ Commands:
   check                 Fetch packages, analyze, and run unit/widget tests.
   unit                  Run unit and widget tests only.
   integration [device]  Run integration tests on a connected device/emulator.
+  integration-binary [device] [apk]
+                        Run integration tests using a pre-built test APK.
   all [device]          Run check, then integration tests.
   build                 Build the Android debug APK.
+  build-integration     Build the Android integration-test APK.
 
 DEVICE_ID may be used instead of the device-id argument.
 The default command is "check".
@@ -49,6 +52,25 @@ run_integration_tests() {
   "${flutter_command[@]}" test integration_test -d "$device_id"
 }
 
+run_integration_binary() {
+  local device_id="${1:-${DEVICE_ID:-}}"
+  local apk_path="${2:-${APK_PATH:-}}"
+  if [[ -z "$device_id" || -z "$apk_path" ]]; then
+    echo "An Android device id and integration APK path are required." >&2
+    echo "Retry with: ./scripts/test.sh integration-binary <device-id> <apk>" >&2
+    exit 2
+  fi
+  if [[ ! -f "$apk_path" ]]; then
+    echo "Integration APK not found: $apk_path" >&2
+    exit 2
+  fi
+  "${flutter_command[@]}" drive \
+    --driver integration_test/driver.dart \
+    --target integration_test/app_flow_test.dart \
+    --device-id "$device_id" \
+    --use-application-binary "$apk_path"
+}
+
 command_name="${1:-check}"
 case "$command_name" in
   check)
@@ -60,12 +82,20 @@ case "$command_name" in
   integration)
     run_integration_tests "${2:-}"
     ;;
+  integration-binary)
+    run_integration_binary "${2:-}" "${3:-}"
+    ;;
   all)
     run_check
     run_integration_tests "${2:-}"
     ;;
   build)
     "${flutter_command[@]}" build apk --debug
+    ;;
+  build-integration)
+    "${flutter_command[@]}" build apk \
+      --debug \
+      --target integration_test/app_flow_test.dart
     ;;
   help|-h|--help)
     usage

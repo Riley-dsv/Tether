@@ -8,14 +8,37 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Keep emulator/build workloads from overlapping across branches or pushes.
+  group: ci-${{ github.workflow }}
+  cancel-in-progress: false
 
 jobs:
   quality:
-    name: Analyze, test, and build
+    name: Analyze and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.50.1
+          channel: stable
+          cache: true
+
+      - name: Run analysis and unit/widget tests
+        run: ./scripts/test.sh check
+
+  android-build:
+    name: Build Android APKs
+    needs: quality
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      app-artifact-url: ${{ steps.upload-app.outputs.artifact-url }}
+      integration-artifact-url: ${{ steps.upload-integration.outputs.artifact-url }}
     steps:
       - name: Check out source
         uses: actions/checkout@v6
@@ -36,21 +59,41 @@ jobs:
       - name: Set up Gradle cache
         uses: gradle/actions/setup-gradle@v5
 
-      - name: Run analysis and unit/widget tests
-        run: ./scripts/test.sh check
-
       - name: Build Android debug APK
         run: ./scripts/test.sh build
 
       - name: Upload debug APK
+        id: upload-app
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
           path: build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
 
+      - name: Build integration test APK
+        run: ./scripts/test.sh build-integration
+
+      - name: Upload integration test APK
+        id: upload-integration
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-debug
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+
+      - name: Publish artifact links
+        env:
+          APP_ARTIFACT_URL: ${{ steps.upload-app.outputs.artifact-url }}
+          INTEGRATION_ARTIFACT_URL: ${{ steps.upload-integration.outputs.artifact-url }}
+        run: |
+          echo '## Android artifacts' >> "$GITHUB_STEP_SUMMARY"
+          echo "- [Installable debug APK]($APP_ARTIFACT_URL)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- [Integration test APK]($INTEGRATION_ARTIFACT_URL)" >> "$GITHUB_STEP_SUMMARY"
+
   android-integration:
     name: Android integration test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: android-build
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -79,6 +122,17 @@ jobs:
       - name: Fetch packages
         run: flutter pub get
 
+      - name: Download integration APK
+        uses: actions/download-artifact@v4
+        with:
+          name: integration-debug
+          path: artifacts/integration-debug
+
+      - name: Report tested artifact
+        env:
+          ARTIFACT_URL: ${{ needs.android-build.outputs.integration-artifact-url }}
+        run: echo "Testing APK artifact $ARTIFACT_URL"
+
       - name: Run integration suite on Android 10
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -87,4 +141,4 @@ jobs:
           arch: x86_64
           profile: pixel_3a
           disable-animations: true
-          script: ./scripts/test.sh integration emulator-5554
+          script: ./scripts/test.sh integration-binary emulator-5554 artifacts/integration-debug/app-debug.apk
