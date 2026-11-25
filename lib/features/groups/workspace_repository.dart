@@ -125,7 +125,10 @@ class WorkspaceRepository implements WorkspaceStore {
       db.rawQuery(
         '''
       SELECT c.*,
-        (SELECT r.content FROM message_revisions r
+        (SELECT CASE
+            WHEN r.encryption_version > 0 THEN 'Encrypted message'
+            ELSE r.content
+          END FROM message_revisions r
           WHERE r.conversation_id = c.id
             AND r.deleted_at IS NULL
             AND r.revision = (SELECT MAX(r2.revision) FROM message_revisions r2 WHERE r2.logical_id = r.logical_id)

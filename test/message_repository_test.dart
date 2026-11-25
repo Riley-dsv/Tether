@@ -4,6 +4,7 @@ import 'package:note_app/features/groups/workspace_repository.dart';
 import 'package:note_app/features/handovers/handover.dart';
 import 'package:note_app/features/handovers/handover_repository.dart';
 import 'package:note_app/features/messages/message.dart';
+import 'package:note_app/features/messages/message_cipher.dart';
 import 'package:note_app/features/messages/message_repository.dart';
 import 'package:note_app/features/system_log/system_log_repository.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -28,7 +29,10 @@ void main() {
     );
     await database.database;
     workspace = WorkspaceRepository(database);
-    repository = MessageRepository(database);
+    repository = MessageRepository(
+      database,
+      cipher: AesGcmMessageCipher.fromKeyBytes(List<int>.filled(32, 7)),
+    );
     handoverRepository = HandoverRepository(database);
     systemLogRepository = SystemLogRepository(database);
     expect(await workspace.members(), isEmpty);
@@ -292,6 +296,76 @@ void main() {
       containsAll(['Member Two', 'Member Three']),
     );
   });
+
+  test('message bodies are authenticated and encrypted at rest', () async {
+    final created = await repository.create(
+      conversationId: conversationId,
+      content: 'Sensitive internal context',
+      authorId: memberOneId,
+    );
+
+    final db = await database.database;
+    final stored = (await db.query(
+      'message_revisions',
+      where: 'logical_id = ?',
+      whereArgs: [created.id],
+    )).single;
+    expect(stored['content'], '');
+    expect(stored['encryption_version'], 1);
+    expect(stored['content_ciphertext'], isNotNull);
+    expect(stored['content_ciphertext'], isNot(contains('Sensitive')));
+    expect(stored['content_nonce'], isNotNull);
+    expect(stored['content_mac'], isNotNull);
+
+    final visible = await repository.watchSnapshot(
+      conversationId: conversationId,
+      viewerId: memberOneId,
+    );
+    expect(visible.single.text, 'Sensitive internal context');
+  });
+
+  test(
+    'legacy plaintext revisions are encrypted before being returned',
+    () async {
+      final db = await database.database;
+      const messageId = 'legacy-message';
+      final now = DateTime.now().toUtc().toIso8601String();
+      await db.insert('message_entities', {
+        'id': messageId,
+        'conversation_id': conversationId,
+        'created_at': now,
+        'visibility': 'shared',
+      });
+      await db.insert('message_revisions', {
+        'logical_id': messageId,
+        'conversation_id': conversationId,
+        'author_id': memberOneId,
+        'recorded_by_id': memberOneId,
+        'content': 'Old plaintext message',
+        'revision': 1,
+        'created_at': now,
+        'recorded_at': now,
+      });
+
+      final migrationRepository = MessageRepository(
+        database,
+        cipher: AesGcmMessageCipher.fromKeyBytes(List<int>.filled(32, 7)),
+      );
+      final messages = await migrationRepository.watchSnapshot(
+        conversationId: conversationId,
+        viewerId: memberOneId,
+      );
+      expect(messages.single.text, 'Old plaintext message');
+
+      final stored = (await db.query(
+        'message_revisions',
+        where: 'logical_id = ?',
+        whereArgs: [messageId],
+      )).single;
+      expect(stored['content'], '');
+      expect(stored['encryption_version'], 1);
+    },
+  );
 
   test('transfers retain a traceable source link', () async {
     final target = await workspace.createConversation(

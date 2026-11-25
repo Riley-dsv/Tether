@@ -23,6 +23,8 @@ class MessageController extends ChangeNotifier {
   bool hasMore = false;
   bool loadingMore = false;
 
+  Future<void> prepare() => _repository.prepare();
+
   Future<void> load({bool showLoading = false}) async {
     if (conversationId == null) {
       messages = const [];

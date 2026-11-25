@@ -161,6 +161,27 @@ abstract final class MessageTables {
     )
   ''';
 
+  static const createEncryptedRevisions = '''
+    CREATE TABLE message_revisions (
+      revision_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      logical_id TEXT NOT NULL REFERENCES message_entities(id),
+      conversation_id TEXT NOT NULL REFERENCES conversations(id),
+      author_id TEXT REFERENCES members(id),
+      recorded_by_id TEXT REFERENCES members(id),
+      content TEXT NOT NULL,
+      content_ciphertext TEXT,
+      content_nonce TEXT,
+      content_mac TEXT,
+      encryption_version INTEGER NOT NULL DEFAULT 0,
+      revision INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      recorded_at TEXT NOT NULL,
+      supersedes_revision_id INTEGER REFERENCES message_revisions(revision_id),
+      deleted_at TEXT,
+      UNIQUE(logical_id, revision)
+    )
+  ''';
+
   static const createPins = '''
     CREATE TABLE message_pins (
       logical_id TEXT PRIMARY KEY REFERENCES message_entities(id),

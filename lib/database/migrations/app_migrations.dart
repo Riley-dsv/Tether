@@ -8,6 +8,7 @@ import 'package:note_app/database/migrations/migration_v7.dart';
 import 'package:note_app/database/migrations/migration_v8.dart';
 import 'package:note_app/database/migrations/migration_v9.dart';
 import 'package:note_app/database/migrations/migration_v10.dart';
+import 'package:note_app/database/migrations/migration_v11.dart';
 
 abstract final class AppMigrations {
   static const List<DatabaseMigration> all = [
@@ -20,6 +21,7 @@ abstract final class AppMigrations {
     MigrationV8(),
     MigrationV9(),
     MigrationV10(),
+    MigrationV11(),
   ];
 
   static int get currentVersion => all.last.targetVersion;

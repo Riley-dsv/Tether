@@ -1,5 +1,6 @@
 import 'package:note_app/database/app_database.dart';
 import 'package:note_app/features/messages/message.dart';
+import 'package:note_app/features/messages/message_cipher.dart';
 import 'package:note_app/shared/models/system_member.dart';
 import 'package:note_app/features/system_log/system_log_repository.dart';
 import 'package:sqflite/sqflite.dart';
@@ -27,6 +28,7 @@ class MessageCursor {
 }
 
 abstract interface class MessageStore {
+  Future<void> prepare();
   Future<List<Message>> watchSnapshot({
     required String conversationId,
     String query = '',
@@ -62,10 +64,16 @@ abstract interface class MessageStore {
 }
 
 class MessageRepository implements MessageStore {
-  MessageRepository(this._appDatabase);
+  MessageRepository(this._appDatabase, {required MessageCipher cipher})
+    : _cipher = cipher;
 
   final AppDatabase _appDatabase;
+  final MessageCipher _cipher;
   int _idSequence = 0;
+  Future<void>? _encryptionReady;
+
+  @override
+  Future<void> prepare() => _ensureEncryption();
 
   @override
   Future<List<Message>> watchSnapshot({
@@ -76,6 +84,7 @@ class MessageRepository implements MessageStore {
     MessageCursor? before,
     int? limit,
   }) async {
+    await _ensureEncryption();
     final db = await _appDatabase.database;
     final normalizedQuery = query.trim();
     final where = <String>[
@@ -94,13 +103,10 @@ class MessageRepository implements MessageStore {
       final timestamp = before.createdAt.toUtc().toIso8601String();
       args.addAll([timestamp, timestamp, before.revisionId]);
     }
-    if (normalizedQuery.isNotEmpty) {
-      where.add("r.content LIKE ? ESCAPE '\\' COLLATE NOCASE");
-      args.add('%${_escapeLike(normalizedQuery)}%');
-    }
     if (pinnedOnly) where.add('p.logical_id IS NOT NULL');
 
-    if (limit != null) args.add(limit);
+    final sqlLimit = normalizedQuery.isEmpty ? limit : null;
+    if (sqlLimit != null) args.add(sqlLimit);
     final rows = await db.rawQuery('''
       WITH latest AS (
         SELECT logical_id, MAX(revision) AS revision
@@ -133,9 +139,21 @@ class MessageRepository implements MessageStore {
       WHERE ${where.join(' AND ')}
       GROUP BY r.revision_id
       ORDER BY r.created_at DESC, r.revision_id DESC
-      ${limit == null ? '' : 'LIMIT ?'}
+      ${sqlLimit == null ? '' : 'LIMIT ?'}
     ''', args);
-    return rows.map(_messageFromRow).toList(growable: false);
+    final messages = await Future.wait(rows.map(_messageFromRow));
+    final filtered = normalizedQuery.isEmpty
+        ? messages
+        : messages
+              .where(
+                (message) => message.text.toLowerCase().contains(
+                  normalizedQuery.toLowerCase(),
+                ),
+              )
+              .toList(growable: false);
+    return limit == null || filtered.length <= limit
+        ? filtered
+        : filtered.take(limit).toList(growable: false);
   }
 
   @override
@@ -146,11 +164,17 @@ class MessageRepository implements MessageStore {
     Set<String> recipientIds = const {},
     String? sourceMessageId,
   }) async {
+    await _ensureEncryption();
     final cleanContent = content.trim();
     if (cleanContent.isEmpty) throw ArgumentError.value(content, 'content');
     final db = await _appDatabase.database;
     final now = DateTime.now().toUtc();
     final logicalId = 'm_${now.microsecondsSinceEpoch}_${_idSequence++}';
+    final encrypted = await _cipher.encrypt(
+      cleanContent,
+      messageId: logicalId,
+      revision: 1,
+    );
     await db.transaction((txn) async {
       if (authorId != null) {
         await _requireConversationMember(txn, conversationId, authorId);
@@ -181,7 +205,7 @@ class MessageRepository implements MessageStore {
         'conversation_id': conversationId,
         'author_id': authorId,
         'recorded_by_id': authorId,
-        'content': cleanContent,
+        ..._encryptedColumns(encrypted),
         'revision': 1,
         'created_at': now.toIso8601String(),
         'recorded_at': now.toIso8601String(),
@@ -214,6 +238,7 @@ class MessageRepository implements MessageStore {
     required String content,
     String? editedById,
   }) async {
+    await _ensureEncryption();
     final cleanContent = content.trim();
     if (cleanContent.isEmpty) throw ArgumentError.value(content, 'content');
     final db = await _appDatabase.database;
@@ -230,13 +255,19 @@ class MessageRepository implements MessageStore {
         );
       }
       final now = DateTime.now().toUtc().toIso8601String();
+      final revision = (current['revision'] as int) + 1;
+      final encrypted = await _cipher.encrypt(
+        cleanContent,
+        messageId: messageId,
+        revision: revision,
+      );
       await txn.insert('message_revisions', {
         'logical_id': messageId,
         'conversation_id': current['conversation_id'],
         'author_id': current['author_id'],
         'recorded_by_id': editedById,
-        'content': cleanContent,
-        'revision': (current['revision'] as int) + 1,
+        ..._encryptedColumns(encrypted),
+        'revision': revision,
         'created_at': current['created_at'],
         'recorded_at': now,
         'supersedes_revision_id': current['revision_id'],
@@ -254,6 +285,7 @@ class MessageRepository implements MessageStore {
 
   @override
   Future<void> delete({required String messageId, String? deletedById}) async {
+    await _ensureEncryption();
     final db = await _appDatabase.database;
     await db.transaction((txn) async {
       final current = await _currentRevision(txn, messageId);
@@ -300,6 +332,7 @@ class MessageRepository implements MessageStore {
     required bool pinned,
     String? actorId,
   }) async {
+    await _ensureEncryption();
     final db = await _appDatabase.database;
     await db.transaction((txn) async {
       final current = await _currentRevision(txn, messageId);
@@ -350,6 +383,7 @@ class MessageRepository implements MessageStore {
     required String messageId,
     required String memberId,
   }) async {
+    await _ensureEncryption();
     final db = await _appDatabase.database;
     await db.transaction((txn) async {
       final current = await _currentRevision(txn, messageId);
@@ -385,6 +419,7 @@ class MessageRepository implements MessageStore {
     required String conversationId,
     required String memberId,
   }) async {
+    await _ensureEncryption();
     final db = await _appDatabase.database;
     final rows = await db.rawQuery(
       '''
@@ -414,6 +449,7 @@ class MessageRepository implements MessageStore {
 
   @override
   Future<List<MessageRevision>> history(String messageId) async {
+    await _ensureEncryption();
     final db = await _appDatabase.database;
     final rows = await db.query(
       'message_revisions',
@@ -421,17 +457,18 @@ class MessageRepository implements MessageStore {
       whereArgs: [messageId],
       orderBy: 'revision DESC',
     );
-    return rows
-        .map(
-          (row) => MessageRevision(
-            revision: row['revision'] as int,
-            content: row['content'] as String,
-            recordedAt: DateTime.parse(row['recorded_at'] as String),
-            recordedById: row['recorded_by_id'] as String?,
-            isDeletion: row['deleted_at'] != null,
-          ),
-        )
-        .toList(growable: false);
+    return Future.wait(
+      rows.map((row) async {
+        final isDeletion = row['deleted_at'] != null;
+        return MessageRevision(
+          revision: row['revision'] as int,
+          content: isDeletion ? '' : await _decryptRow(row),
+          recordedAt: DateTime.parse(row['recorded_at'] as String),
+          recordedById: row['recorded_by_id'] as String?,
+          isDeletion: isDeletion,
+        );
+      }),
+    );
   }
 
   static Future<Map<String, Object?>> _currentRevision(
@@ -474,7 +511,7 @@ class MessageRepository implements MessageStore {
     }
   }
 
-  static Message _messageFromRow(Map<String, Object?> row) {
+  Future<Message> _messageFromRow(Map<String, Object?> row) async {
     final seen =
         (row['seen_by'] as String?)
             ?.split(',')
@@ -491,7 +528,7 @@ class MessageRepository implements MessageStore {
               id: row['author_id'] as String,
               name: row['author_name'] as String,
             ),
-      text: row['content'] as String,
+      text: await _decryptRow(row),
       createdAt: DateTime.parse(row['created_at'] as String),
       editedAt: revision > 1
           ? DateTime.parse(row['recorded_at'] as String)
@@ -523,8 +560,75 @@ class MessageRepository implements MessageStore {
     );
   }
 
-  static String _escapeLike(String value) => value
-      .replaceAll('\\', '\\\\')
-      .replaceAll('%', '\\%')
-      .replaceAll('_', '\\_');
+  Future<void> _ensureEncryption() async {
+    final pending = _encryptionReady ??= _encryptLegacyRows();
+    try {
+      await pending;
+    } catch (_) {
+      _encryptionReady = null;
+      rethrow;
+    }
+  }
+
+  Future<void> _encryptLegacyRows() async {
+    final db = await _appDatabase.database;
+    final rows = await db.query(
+      'message_revisions',
+      where: 'encryption_version = 0 AND deleted_at IS NULL AND content <> ?',
+      whereArgs: [''],
+    );
+    for (final row in rows) {
+      final messageId = row['logical_id'] as String;
+      final revision = row['revision'] as int;
+      final encrypted = await _cipher.encrypt(
+        row['content'] as String,
+        messageId: messageId,
+        revision: revision,
+      );
+      await db.update(
+        'message_revisions',
+        _encryptedColumns(encrypted),
+        where: 'revision_id = ? AND encryption_version = 0',
+        whereArgs: [row['revision_id']],
+      );
+    }
+    if (rows.isNotEmpty) {
+      // Updating a row does not remove its old bytes from SQLite free pages or
+      // the WAL. Rewrite the database after the one-time plaintext migration.
+      await db.rawQuery('PRAGMA wal_checkpoint(TRUNCATE)');
+      await db.execute('VACUUM');
+      await db.rawQuery('PRAGMA wal_checkpoint(TRUNCATE)');
+    }
+  }
+
+  Future<String> _decryptRow(Map<String, Object?> row) {
+    final version = row['encryption_version'] as int;
+    if (version == 0) return Future.value(row['content'] as String);
+    final cipherText = row['content_ciphertext'] as String?;
+    final nonce = row['content_nonce'] as String?;
+    final mac = row['content_mac'] as String?;
+    if (cipherText == null || nonce == null || mac == null) {
+      throw StateError('Encrypted message content is incomplete');
+    }
+    return _cipher.decrypt(
+      EncryptedMessageContent(
+        cipherText: cipherText,
+        nonce: nonce,
+        mac: mac,
+        version: version,
+      ),
+      messageId: row['logical_id'] as String,
+      revision: row['revision'] as int,
+    );
+  }
+
+  static Map<String, Object?> _encryptedColumns(
+    EncryptedMessageContent encrypted,
+  ) => {
+    'content': '',
+    'content_ciphertext': encrypted.cipherText,
+    'content_nonce': encrypted.nonce,
+    'content_mac': encrypted.mac,
+    'encryption_version': encrypted.version,
+  };
 }

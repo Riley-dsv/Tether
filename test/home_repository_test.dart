@@ -6,6 +6,7 @@ import 'package:note_app/features/handovers/handover_repository.dart';
 import 'package:note_app/features/home/home_repository.dart';
 import 'package:note_app/features/home/home_summary.dart';
 import 'package:note_app/features/messages/message_repository.dart';
+import 'package:note_app/features/messages/message_cipher.dart';
 import 'package:note_app/features/tasks/task.dart';
 import 'package:note_app/features/tasks/task_repository.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -26,7 +27,10 @@ void main() {
       title: 'Home',
       memberIds: {alice.id, morgan.id},
     );
-    await MessageRepository(database).create(
+    await MessageRepository(
+      database,
+      cipher: AesGcmMessageCipher.fromKeyBytes(List<int>.filled(32, 7)),
+    ).create(
       conversationId: conversation.id,
       content: 'Please check this',
       authorId: alice.id,

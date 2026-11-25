@@ -50,6 +50,9 @@ class _PagedMessageStore implements MessageStore {
   final List<Message> messages;
 
   @override
+  Future<void> prepare() async {}
+
+  @override
   Future<List<Message>> watchSnapshot({
     required String conversationId,
     String query = '',
