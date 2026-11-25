@@ -5,26 +5,47 @@ import 'package:note_app/shared/models/system_member.dart';
 import 'package:note_app/features/system_log/system_log_repository.dart';
 import 'package:sqflite/sqflite.dart';
 
+/// Persistence contract for internal identities and conversation membership.
 abstract interface class WorkspaceStore {
+  /// Lists active member profiles in display-name order.
   Future<List<SystemMember>> members();
+
+  /// Creates a member and automatically joins them to the general space.
   Future<SystemMember> createMember(String displayName);
+
+  /// Changes presentation identity without rewriting historical attribution.
   Future<SystemMember> renameMember({
     required String memberId,
     required String displayName,
   });
+
+  /// Removes a member from active selection while retaining historical rows.
   Future<void> archiveMember(String memberId);
+
+  /// Lists spaces and viewer-specific unread counts.
+  ///
+  /// A `null` [viewerId] yields no attributed unread count.
   Future<List<Conversation>> conversations({String? viewerId});
+
+  /// Creates a persistent group whose initial membership is [memberIds].
   Future<Conversation> createConversation({
     required String title,
     required Set<String> memberIds,
   });
+
+  /// Adds an active member to a conversation idempotently.
   Future<void> addMemberToConversation({
     required String conversationId,
     required String memberId,
   });
 }
 
+/// SQLite implementation of [WorkspaceStore].
+///
+/// Member creation and membership changes are transactional with their system
+/// log events. The unique general space is managed as a database invariant.
 class WorkspaceRepository implements WorkspaceStore {
+  /// Creates a workspace repository over [AppDatabase].
   WorkspaceRepository(this._appDatabase);
 
   final AppDatabase _appDatabase;

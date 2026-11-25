@@ -1,11 +1,15 @@
 import 'package:note_app/database/app_database.dart';
 import 'package:note_app/features/home/home_summary.dart';
 
+/// Aggregates the small actionable projection required by the home screen.
 abstract interface class HomeStore {
+  /// Returns a viewer-scoped summary without exposing other members' targets.
   Future<HomeSummary> summary({required String? viewerId});
 }
 
+/// SQLite implementation of [HomeStore].
 class HomeRepository implements HomeStore {
+  /// Creates a dashboard repository over [AppDatabase].
   HomeRepository(this._appDatabase);
   final AppDatabase _appDatabase;
 

@@ -4,7 +4,12 @@ import 'package:note_app/features/home/home_summary.dart';
 import 'package:note_app/shared/models/system_member.dart';
 import 'package:note_app/shared/widgets/member_avatar.dart';
 
+/// Scrollable dashboard answering what the current viewer needs to know now.
+///
+/// Unknown viewers receive the shared, privacy-safe summary rather than being
+/// forced to select or create an identity.
 class HomeView extends StatelessWidget {
+  /// Creates the dashboard projection and its navigation callbacks.
   const HomeView({
     super.key,
     required this.summary,

@@ -10,7 +10,12 @@ import 'package:note_app/database/migrations/migration_v9.dart';
 import 'package:note_app/database/migrations/migration_v10.dart';
 import 'package:note_app/database/migrations/migration_v11.dart';
 
+/// Ordered registry of every released database migration.
+///
+/// [all] must remain strictly increasing; [currentVersion] is derived from the
+/// final entry so version declarations cannot drift apart.
 abstract final class AppMigrations {
+  /// Complete append-only migration chain.
   static const List<DatabaseMigration> all = [
     MigrationV2(),
     MigrationV3(),
@@ -24,5 +29,6 @@ abstract final class AppMigrations {
     MigrationV11(),
   ];
 
+  /// Schema version expected by the current application.
   static int get currentVersion => all.last.targetVersion;
 }

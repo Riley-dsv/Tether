@@ -3,9 +3,15 @@ import 'package:note_app/app/app_dependencies.dart';
 import 'package:note_app/app/app_theme.dart';
 import 'package:note_app/features/messages/message_workspace_screen.dart';
 
+/// Root Material application and dependency-lifetime boundary.
+///
+/// When [dependencies] is omitted, the widget creates and disposes the
+/// production graph. Injected dependencies remain owned by the caller.
 class TetherApp extends StatefulWidget {
+  /// Creates the application with optional dependency overrides.
   const TetherApp({super.key, this.dependencies});
 
+  /// Dependency graph override, primarily used by tests.
   final AppDependencies? dependencies;
 
   @override

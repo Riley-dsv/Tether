@@ -2,20 +2,29 @@ import 'package:material_ui/material_ui.dart';
 import 'package:note_app/shared/models/system_member.dart';
 import 'package:note_app/shared/widgets/member_avatar.dart';
 
+/// Actions returned by [MemberManagementDialog].
 enum MemberManagementActionType { create, rename, remove }
 
+/// Typed result from member management.
 class MemberManagementAction {
+  /// Creates an add-member action with no existing member target.
   const MemberManagementAction.create()
     : member = null,
       type = MemberManagementActionType.create;
 
+  /// Creates an action targeting [member].
   const MemberManagementAction({required this.member, required this.type});
 
+  /// Existing member affected by rename/remove, otherwise `null`.
   final SystemMember? member;
+
+  /// Requested operation.
   final MemberManagementActionType type;
 }
 
+/// Dialog for adding, renaming, or archiving internal member profiles.
 class MemberManagementDialog extends StatelessWidget {
+  /// Creates a management dialog for active [members].
   const MemberManagementDialog({super.key, required this.members});
   final List<SystemMember> members;
 
@@ -65,10 +74,8 @@ class MemberManagementDialog extends StatelessWidget {
     ),
     actions: [
       FilledButton.icon(
-        onPressed: () => Navigator.pop(
-          context,
-          const MemberManagementAction.create(),
-        ),
+        onPressed: () =>
+            Navigator.pop(context, const MemberManagementAction.create()),
         icon: const Icon(Icons.person_add_outlined),
         label: const Text('Add member'),
       ),

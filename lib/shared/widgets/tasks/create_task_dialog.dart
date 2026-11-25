@@ -1,6 +1,8 @@
 part of 'task_widgets.dart';
 
+/// Validated, non-persisted values returned by [CreateTaskDialog].
 class TaskDraft {
+  /// Creates a task draft.
   const TaskDraft({
     required this.title,
     required this.assignment,
@@ -17,7 +19,9 @@ class TaskDraft {
   final DateTime? reminderAt;
 }
 
+/// Dialog for selecting task ownership, status, deadline, and reminder.
 class CreateTaskDialog extends StatefulWidget {
+  /// Creates a task dialog limited to eligible [members].
   const CreateTaskDialog({super.key, required this.members});
   final List<SystemMember> members;
   @override

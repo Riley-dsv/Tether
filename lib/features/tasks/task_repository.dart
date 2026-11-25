@@ -3,12 +3,20 @@ import 'package:note_app/features/system_log/system_log_repository.dart';
 import 'package:note_app/features/tasks/task.dart';
 import 'package:note_app/shared/models/system_member.dart';
 
+/// Persistence contract for collaborative tasks and reminders.
 abstract interface class TaskStore {
+  /// Lists tasks in a conversation visible to [viewerId].
+  ///
+  /// A `null` viewer receives an empty result rather than attributed data.
   Future<List<WorkspaceTask>> list({
     required String conversationId,
     String? viewerId,
   });
 
+  /// Creates a task and its optional assignee set atomically.
+  ///
+  /// [TaskAssignment.specific] requires at least one assignee;
+  /// [TaskAssignment.anyone] deliberately permits an empty set.
   Future<void> create({
     required String conversationId,
     required String title,
@@ -20,6 +28,7 @@ abstract interface class TaskStore {
     DateTime? reminderAt,
   });
 
+  /// Appends a meaningful task status transition to the system log.
   Future<void> updateStatus({
     required String taskId,
     required TaskStatus status,
@@ -27,7 +36,9 @@ abstract interface class TaskStore {
   });
 }
 
+/// SQLite implementation of [TaskStore].
 class TaskRepository implements TaskStore {
+  /// Creates a task repository over [AppDatabase].
   TaskRepository(this._appDatabase);
 
   final AppDatabase _appDatabase;
