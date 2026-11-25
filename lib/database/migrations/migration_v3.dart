@@ -2,6 +2,12 @@ import 'package:note_app/database/migrations/database_migration.dart';
 import 'package:note_app/database/tables/message_tables.dart';
 import 'package:sqflite/sqflite.dart';
 
+/// Version 3 — separates logical messages from their immutable revisions.
+///
+/// Adds `message_entities`, backfills one stable entity for every existing
+/// logical message, and installs integrity triggers for revisions, pins, and
+/// receipts. The earliest revision timestamp becomes the entity creation time.
+/// Existing message content and revision history are preserved.
 class MigrationV3 implements DatabaseMigration {
   const MigrationV3();
   @override
