@@ -1,4 +1,4 @@
-name: CI
+name: CI Build
 
 on:
   push:
@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  # Keep emulator/build workloads from overlapping across branches or pushes.
-  group: ci-${{ github.workflow }}
+  # Shared with android-integration.yml so build and emulator workloads queue.
+  group: tether-ci
   cancel-in-progress: false
 
 jobs:
@@ -36,9 +36,6 @@ jobs:
     needs: quality
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    outputs:
-      app-artifact-url: ${{ steps.upload-app.outputs.artifact-url }}
-      integration-artifact-url: ${{ steps.upload-integration.outputs.artifact-url }}
     steps:
       - name: Check out source
         uses: actions/checkout@v6
@@ -89,56 +86,3 @@ jobs:
           echo '## Android artifacts' >> "$GITHUB_STEP_SUMMARY"
           echo "- [Installable debug APK]($APP_ARTIFACT_URL)" >> "$GITHUB_STEP_SUMMARY"
           echo "- [Integration test APK]($INTEGRATION_ARTIFACT_URL)" >> "$GITHUB_STEP_SUMMARY"
-
-  android-integration:
-    name: Android integration test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: android-build
-    runs-on: ubuntu-latest
-    timeout-minutes: 35
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v6
-
-      - name: Enable KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-
-      - name: Set up Java 17
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: 3.50.1
-          channel: stable
-          cache: true
-
-      - name: Fetch packages
-        run: flutter pub get
-
-      - name: Download integration APK
-        uses: actions/download-artifact@v4
-        with:
-          name: integration-debug
-          path: artifacts/integration-debug
-
-      - name: Report tested artifact
-        env:
-          ARTIFACT_URL: ${{ needs.android-build.outputs.integration-artifact-url }}
-        run: echo "Testing APK artifact $ARTIFACT_URL"
-
-      - name: Run integration suite on Android 10
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 29
-          target: default
-          arch: x86_64
-          profile: pixel_3a
-          disable-animations: true
-          script: ./scripts/test.sh integration-binary emulator-5554 artifacts/integration-debug/app-debug.apk
