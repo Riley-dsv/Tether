@@ -17,6 +17,10 @@ void main() {
       'tether_integration_${DateTime.now().microsecondsSinceEpoch}.db',
     );
     final database = AppDatabase(path: databasePath);
+    addTearDown(() async {
+      await database.close();
+      await databaseFactory.deleteDatabase(databasePath);
+    });
     final workspace = WorkspaceRepository(database);
     final morgan = await workspace.createMember('Morgan');
     final dependencies = AppDependencies(database: database);
@@ -35,13 +39,38 @@ void main() {
       'Integration hello',
     );
     await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
-    await tester.pumpAndSettle();
+    await _pumpUntilFound(tester, find.text('Integration hello'));
 
     expect(find.text('Integration hello'), findsOneWidget);
     expect(find.text('Morgan'), findsWidgets);
 
+    final db = await database.database;
+    final stored = (await db.query(
+      'message_revisions',
+      orderBy: 'revision_id DESC',
+      limit: 1,
+    )).single;
+    expect(stored['content'], '');
+    expect(stored['encryption_version'], 1);
+    expect(stored['content_ciphertext'], isNotNull);
+
     await tester.pumpWidget(const SizedBox.shrink());
-    await database.close();
-    await databaseFactory.deleteDatabase(databasePath);
   });
+}
+
+Future<void> _pumpUntilFound(
+  WidgetTester tester,
+  Finder finder, {
+  Duration timeout = const Duration(seconds: 15),
+}) async {
+  const interval = Duration(milliseconds: 100);
+  final attempts = timeout.inMilliseconds ~/ interval.inMilliseconds;
+  for (var attempt = 0; attempt < attempts; attempt++) {
+    if (finder.evaluate().isNotEmpty) return;
+    await tester.runAsync(() => Future<void>.delayed(interval));
+    await tester.pump();
+  }
+  if (finder.evaluate().isEmpty) {
+    throw TestFailure('Timed out waiting for $finder');
+  }
 }
