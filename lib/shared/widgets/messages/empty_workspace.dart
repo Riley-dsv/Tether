@@ -1,6 +1,8 @@
 part of 'message_widgets.dart';
 
+/// Empty-state actions for creating the first member or conversation.
 class EmptyWorkspace extends StatelessWidget {
+  /// Creates the workspace onboarding surface.
   const EmptyWorkspace({
     super.key,
     required this.hasMembers,
@@ -67,7 +69,9 @@ class EmptyWorkspace extends StatelessWidget {
   );
 }
 
+/// Dialog that validates and returns a new member display name.
 class CreateMemberDialog extends StatefulWidget {
+  /// Creates the member dialog.
   const CreateMemberDialog({super.key});
 
   @override

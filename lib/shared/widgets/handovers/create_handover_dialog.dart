@@ -1,6 +1,8 @@
 part of 'handover_widgets.dart';
 
+/// Validated, non-persisted values returned by [CreateHandoverDialog].
 class HandoverDraft {
+  /// Creates a handover draft.
   const HandoverDraft({
     required this.summary,
     required this.recipientIds,
@@ -18,7 +20,9 @@ class HandoverDraft {
   final DateTime? expiresAt;
 }
 
+/// Dialog for composing a structured handover and explicit audience.
 class CreateHandoverDialog extends StatefulWidget {
+  /// Creates a handover dialog limited to eligible [members].
   const CreateHandoverDialog({super.key, required this.members});
   final List<SystemMember> members;
 

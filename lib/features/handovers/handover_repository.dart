@@ -4,11 +4,19 @@ import 'package:note_app/features/system_log/system_log_repository.dart';
 import 'package:note_app/shared/models/system_member.dart';
 import 'package:sqflite/sqflite.dart';
 
+/// Persistence contract for structured, targeted handovers.
 abstract interface class HandoverStore {
+  /// Lists handovers visible to [viewerId] in one conversation.
+  ///
+  /// Unknown viewers receive no handovers because recipients are explicit.
   Future<List<Handover>> list({
     required String conversationId,
     String? viewerId,
   });
+
+  /// Creates a handover and its recipients/items atomically.
+  ///
+  /// Every recipient and non-null author must belong to the conversation.
   Future<void> create({
     required String conversationId,
     required String summary,
@@ -19,10 +27,14 @@ abstract interface class HandoverStore {
     DateTime? expiresAt,
     String? authorId,
   });
+
+  /// Records an idempotent read receipt for a valid recipient.
   Future<void> markRead({required String handoverId, required String memberId});
 }
 
+/// SQLite implementation of [HandoverStore].
 class HandoverRepository implements HandoverStore {
+  /// Creates a handover repository over [AppDatabase].
   HandoverRepository(this._appDatabase);
 
   final AppDatabase _appDatabase;

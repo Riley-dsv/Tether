@@ -3,7 +3,12 @@ import 'package:note_app/features/system_log/system_event.dart';
 import 'package:note_app/shared/models/system_member.dart';
 import 'package:sqflite/sqflite.dart';
 
+/// Query contract for the cross-cutting human-readable activity feed.
 abstract interface class SystemLogStore {
+  /// Lists newest events visible to [viewerId].
+  ///
+  /// Related private objects apply their own visibility rules. Technical events
+  /// remain hidden unless [includeTechnical] is true.
   Future<List<SystemEvent>> list({
     String? viewerId,
     bool includeTechnical = false,
@@ -11,11 +16,17 @@ abstract interface class SystemLogStore {
   });
 }
 
+/// SQLite implementation of [SystemLogStore].
 class SystemLogRepository implements SystemLogStore {
+  /// Creates a system-log repository over [AppDatabase].
   SystemLogRepository(this._appDatabase);
 
   final AppDatabase _appDatabase;
 
+  /// Inserts an event using an existing database executor or transaction.
+  ///
+  /// Repositories call this inside their mutation transaction so domain state
+  /// and its explanatory event cannot diverge.
   static Future<void> record(
     DatabaseExecutor db, {
     required String type,

@@ -2,7 +2,9 @@ import 'package:material_ui/material_ui.dart';
 import 'package:note_app/app/app_theme.dart';
 import 'package:note_app/shared/models/system_member.dart';
 
+/// Deterministic avatar for a member or the unknown identity.
 class MemberAvatar extends StatelessWidget {
+  /// Creates an avatar at [size] logical pixels.
   const MemberAvatar({
     super.key,
     this.member,

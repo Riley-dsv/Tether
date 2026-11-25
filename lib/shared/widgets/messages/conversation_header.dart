@@ -1,6 +1,8 @@
 part of 'message_widgets.dart';
 
+/// Conversation title bar with an optional controlled search field.
 class ConversationHeader extends StatelessWidget {
+  /// Creates a header for [conversation].
   const ConversationHeader({
     super.key,
     required this.conversation,

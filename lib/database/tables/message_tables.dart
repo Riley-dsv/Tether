@@ -1,3 +1,7 @@
+/// Current and historical SQL declarations used by database creation/migration.
+///
+/// Constants already referenced by a released migration are immutable. Fresh
+/// install definitions may advance only alongside a corresponding migration.
 abstract final class MessageTables {
   // CREATE TABLE definitions already used by a migration are append-only.
   // Schema changes belong in a new migration, never in historical SQL.

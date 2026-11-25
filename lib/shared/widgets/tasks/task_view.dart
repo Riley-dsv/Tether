@@ -1,6 +1,8 @@
 part of 'task_widgets.dart';
 
+/// Task list surface for one selected conversation.
 class TaskView extends StatelessWidget {
+  /// Creates a task view with externally owned mutations.
   const TaskView({
     super.key,
     required this.tasks,

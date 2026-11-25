@@ -1,6 +1,8 @@
 part of 'message_widgets.dart';
 
+/// Adaptive list of the general space and persistent group conversations.
 class ConversationList extends StatefulWidget {
+  /// Creates a selectable conversation list.
   const ConversationList({
     super.key,
     required this.conversations,

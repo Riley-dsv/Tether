@@ -1,6 +1,11 @@
 part of 'message_widgets.dart';
 
+/// Message entry surface with optional author and targeted recipients.
+///
+/// Selecting no author preserves unknown attribution; it does not create or
+/// select a synthetic member.
 class MessageComposer extends StatelessWidget {
+  /// Creates a controlled composer.
   const MessageComposer({
     super.key,
     required this.controller,
