@@ -137,6 +137,18 @@ DEVICE_ID=<device-id> ./scripts/test.sh integration
 
 Use `flutter devices` to find the identifier of a connected phone or emulator.
 
+## API documentation
+
+Public contracts and non-obvious invariants use Dartdoc `///` comments. Generate
+the browsable API reference with:
+
+```bash
+dart doc
+```
+
+The generated site is written to `doc/api/` and is intentionally ignored by
+Git. Broader architectural invariants are documented in `doc/architecture.md`.
+
 ## Continuous integration
 
 The GitHub Actions workflow in `.github/workflows/ci.yml` checks formatting and analysis, runs the automated test suites, verifies an Android build, and exercises the integration suite on an Android emulator.

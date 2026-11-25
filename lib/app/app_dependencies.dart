@@ -21,6 +21,11 @@ class AppDependencies {
     required bool ownsDatabase,
   }) : _ownsDatabase = ownsDatabase;
 
+  /// Creates the production dependency graph with optional test overrides.
+  ///
+  /// When [database] is supplied, ownership remains with the caller and
+  /// [dispose] will not close it. The default message store uses a key held in
+  /// platform secure storage.
   factory AppDependencies({
     AppDatabase? database,
     MessageStore? messages,
@@ -48,15 +53,31 @@ class AppDependencies {
     );
   }
 
+  /// Shared database connection owner.
   final AppDatabase database;
+
+  /// Message persistence and revision operations.
   final MessageStore messages;
+
+  /// Member and conversation persistence.
   final WorkspaceStore workspace;
+
+  /// Structured handover persistence.
   final HandoverStore handovers;
+
+  /// Dashboard aggregation.
   final HomeStore home;
+
+  /// Cross-cutting audit feed persistence.
   final SystemLogStore systemLog;
+
+  /// Task and reminder persistence.
   final TaskStore tasks;
   final bool _ownsDatabase;
 
+  /// Releases resources owned by this composition root.
+  ///
+  /// Injected databases are intentionally not closed.
   Future<void> dispose() async {
     if (_ownsDatabase) await database.close();
   }

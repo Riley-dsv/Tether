@@ -1,6 +1,8 @@
 part of 'handover_widgets.dart';
 
+/// Handover list surface scoped to one conversation and viewer.
 class HandoverView extends StatelessWidget {
+  /// Creates a handover view with externally owned mutations.
   const HandoverView({
     super.key,
     required this.handovers,

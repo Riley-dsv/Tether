@@ -5,7 +5,15 @@ import 'package:note_app/database/migrations/app_migrations.dart';
 import 'package:note_app/database/migrations/database_migration.dart';
 import 'package:note_app/database/tables/message_tables.dart';
 
+/// Lazily opened SQLite database owned by the application composition root.
+///
+/// A single instance caches one connection. Foreign keys, WAL, secure deletion,
+/// and lock timeout behavior are configured consistently for mobile and FFI.
 class AppDatabase {
+  /// Creates a database wrapper.
+  ///
+  /// [factory] and [path] are injectable so tests can use an in-memory FFI
+  /// database without mutating the device database.
   AppDatabase({DatabaseFactory? factory, String? path})
     : _factory = factory ?? defaultDatabaseFactory(),
       _path = path;
@@ -14,6 +22,7 @@ class AppDatabase {
   final String? _path;
   Database? _database;
 
+  /// Returns the cached connection, opening and migrating it on first access.
   Future<Database> get database async => _database ??= await _open();
 
   Future<Database> _open() async {
@@ -71,6 +80,7 @@ class AppDatabase {
     );
   }
 
+  /// Closes the cached connection and permits a later clean reopen.
   Future<void> close() async {
     await _database?.close();
     _database = null;

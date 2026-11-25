@@ -1,6 +1,8 @@
 part of 'message_widgets.dart';
 
+/// Desktop navigation rail for the workspace's feature modes.
 class WorkspaceNavigation extends StatelessWidget {
+  /// Creates navigation with externally owned selection state.
   const WorkspaceNavigation({
     super.key,
     required this.currentMember,

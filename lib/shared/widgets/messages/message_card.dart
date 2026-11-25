@@ -1,6 +1,8 @@
 part of 'message_widgets.dart';
 
+/// Presents one decrypted message revision and its available actions.
 class MessageCard extends StatelessWidget {
+  /// Creates a message card for the current viewer context.
   const MessageCard({
     super.key,
     required this.message,

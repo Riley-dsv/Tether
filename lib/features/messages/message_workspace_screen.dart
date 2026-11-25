@@ -22,7 +22,12 @@ import 'package:note_app/shared/widgets/tasks/task_widgets.dart';
 
 part 'workspace_actions.dart';
 
+/// Main adaptive workspace joining home, messages, tasks, and handovers.
+///
+/// The screen owns only ephemeral presentation state. Persistent mutations are
+/// delegated to injected stores and [MessageController].
 class MessageWorkspaceScreen extends StatefulWidget {
+  /// Creates the workspace from its feature-level contracts.
   const MessageWorkspaceScreen({
     super.key,
     required this.messages,
@@ -33,11 +38,22 @@ class MessageWorkspaceScreen extends StatefulWidget {
     required this.tasks,
   });
 
+  /// Encrypted message store.
   final MessageStore messages;
+
+  /// Member and conversation store.
   final WorkspaceStore workspace;
+
+  /// Handover store.
   final HandoverStore handovers;
+
+  /// Dashboard aggregation store.
   final HomeStore home;
+
+  /// Cross-feature system log store.
   final SystemLogStore systemLog;
+
+  /// Task and reminder store.
   final TaskStore tasks;
 
   @override

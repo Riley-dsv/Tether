@@ -1,12 +1,20 @@
 part of 'message_widgets.dart';
 
+/// Validated values returned by [CreateConversationDialog].
 class ConversationInput {
+  /// Creates conversation input with optional initial membership.
   const ConversationInput(this.title, this.memberIds);
+
+  /// User-provided conversation title.
   final String title;
+
+  /// Initial participant identifiers; may be empty for an anonymous space.
   final Set<String> memberIds;
 }
 
+/// Dialog that maps recipient selection to shared/private/group visibility.
 class TargetRecipientsDialog extends StatefulWidget {
+  /// Creates a recipient dialog with an existing selection.
   const TargetRecipientsDialog({
     super.key,
     required this.members,
@@ -77,7 +85,9 @@ class _TargetRecipientsDialogState extends State<TargetRecipientsDialog> {
   );
 }
 
+/// Dialog for creating a persistent conversation.
 class CreateConversationDialog extends StatefulWidget {
+  /// Creates a conversation dialog from active [members].
   const CreateConversationDialog({super.key, required this.members});
   final List<SystemMember> members;
 

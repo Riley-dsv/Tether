@@ -1,6 +1,8 @@
 part of 'message_widgets.dart';
 
+/// Desktop side panel summarizing a conversation's sharing boundary.
 class SharedContextPanel extends StatelessWidget {
+  /// Creates a context panel for [conversation].
   const SharedContextPanel({super.key, required this.conversation});
   final Conversation conversation;
 

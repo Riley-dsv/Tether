@@ -5,7 +5,9 @@ import 'package:note_app/shared/models/system_member.dart';
 import 'package:note_app/features/system_log/system_log_repository.dart';
 import 'package:sqflite/sqflite.dart';
 
+/// One immutable entry in a logical message's revision history.
 class MessageRevision {
+  /// Creates a decrypted revision projection.
   const MessageRevision({
     required this.revision,
     required this.content,
@@ -14,21 +16,43 @@ class MessageRevision {
     required this.isDeletion,
   });
 
+  /// Monotonic logical revision number.
   final int revision;
+
+  /// Decrypted body, empty for a deletion revision.
   final String content;
+
+  /// Time at which this revision was appended.
   final DateTime recordedAt;
+
+  /// Member responsible for the revision, or unknown.
   final String? recordedById;
+
+  /// Whether this revision is the deletion tombstone.
   final bool isDeletion;
 }
 
+/// Stable keyset-pagination boundary for message history.
 class MessageCursor {
+  /// Creates a cursor from the final item of a page.
   const MessageCursor({required this.createdAt, required this.revisionId});
+
+  /// Logical message creation time used as the primary ordering key.
   final DateTime createdAt;
+
+  /// Revision row ID used to make equal timestamps deterministic.
   final int revisionId;
 }
 
+/// Persistence contract for encrypted, revisioned messages.
 abstract interface class MessageStore {
+  /// Opens/migrates storage and encrypts any legacy plaintext before reads.
   Future<void> prepare();
+
+  /// Returns latest visible revisions ordered newest first.
+  ///
+  /// [viewerId] controls targeted visibility. Search happens after authorized
+  /// rows are decrypted, and [before] provides stable keyset pagination.
   Future<List<Message>> watchSnapshot({
     required String conversationId,
     String query = '',
@@ -37,6 +61,11 @@ abstract interface class MessageStore {
     MessageCursor? before,
     int? limit,
   });
+
+  /// Creates revision one and derives visibility from [recipientIds].
+  ///
+  /// A `null` [authorId] is valid unknown attribution. Non-null authors and all
+  /// recipients must belong to the conversation.
   Future<Message> create({
     required String conversationId,
     required String content,
@@ -44,26 +73,43 @@ abstract interface class MessageStore {
     Set<String> recipientIds = const {},
     String? sourceMessageId,
   });
+
+  /// Appends an encrypted revision without overwriting previous content.
   Future<void> edit({
     required String messageId,
     required String content,
     String? editedById,
   });
+
+  /// Appends a deletion tombstone and removes the current pin.
   Future<void> delete({required String messageId, String? deletedById});
+
+  /// Sets the logical message's pin state independently of revisions.
   Future<void> setPinned({
     required String messageId,
     required bool pinned,
     String? actorId,
   });
+
+  /// Adds an idempotent seen receipt for a conversation member.
   Future<void> markSeen({required String messageId, required String memberId});
+
+  /// Counts visible, non-deleted messages not acknowledged by [memberId].
   Future<int> unreadCount({
     required String conversationId,
     required String memberId,
   });
+
+  /// Returns all decrypted revisions newest first, including tombstones.
   Future<List<MessageRevision>> history(String messageId);
 }
 
+/// SQLite implementation of [MessageStore].
+///
+/// Revision bodies are encrypted independently. Legacy plaintext conversion is
+/// serialized per repository instance and finishes before any message read.
 class MessageRepository implements MessageStore {
+  /// Creates a repository using the required application [cipher].
   MessageRepository(this._appDatabase, {required MessageCipher cipher})
     : _cipher = cipher;
 

@@ -1,0 +1,12 @@
+dartdoc:
+  categories:
+    Architecture:
+      markdown: doc/architecture.md
+      name: Architecture and invariants
+  categoryOrder:
+    - Architecture
+  showUndocumentedCategories: true
+  errors:
+    - unresolved-doc-reference
+  warnings:
+    - tool-error

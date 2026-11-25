@@ -8,7 +8,8 @@ import 'package:note_app/shared/models/system_member.dart';
 /// Ephemeral presentation state for the workspace screen.
 ///
 /// Persistent data and operations remain behind store/controller contracts;
-/// this object only describes what the UI is currently presenting.
+/// this object only describes what the UI is currently presenting. A `null`
+/// [currentAuthor] means unknown attribution, not a missing database member.
 class WorkspaceViewState {
   bool homeMode = true;
   bool loadingHome = false;
