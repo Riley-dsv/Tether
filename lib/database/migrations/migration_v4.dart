@@ -2,6 +2,12 @@ import 'package:note_app/database/migrations/database_migration.dart';
 import 'package:note_app/database/tables/message_tables.dart';
 import 'package:sqflite/sqflite.dart';
 
+/// Version 4 — adds targeted sharing and traceable message transfers.
+///
+/// Extends each message entity with `visibility` and `source_message_id`, then
+/// creates the many-to-many recipient table, its lookup index, and its integrity
+/// trigger. Existing messages default to `shared`, preserving their prior
+/// audience rather than making them unexpectedly private.
 class MigrationV4 implements DatabaseMigration {
   const MigrationV4();
   @override

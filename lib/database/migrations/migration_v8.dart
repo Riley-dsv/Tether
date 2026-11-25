@@ -2,6 +2,11 @@ import 'package:note_app/database/migrations/database_migration.dart';
 import 'package:note_app/database/tables/message_tables.dart';
 import 'package:sqflite/sqflite.dart';
 
+/// Version 8 — connects task activity to the system log.
+///
+/// Adds the optional `related_task_id` foreign key to `system_events` and an
+/// index for task-linked event queries. The column check makes the transition
+/// tolerant of early development databases that already received the column.
 class MigrationV8 implements DatabaseMigration {
   const MigrationV8();
   @override

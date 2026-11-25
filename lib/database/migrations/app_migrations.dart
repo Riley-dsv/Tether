@@ -13,7 +13,9 @@ import 'package:note_app/database/migrations/migration_v11.dart';
 /// Ordered registry of every released database migration.
 ///
 /// [all] must remain strictly increasing; [currentVersion] is derived from the
-/// final entry so version declarations cannot drift apart.
+/// final entry so version declarations cannot drift apart. Historical classes
+/// remain executable upgrade paths: removing one would prevent installations
+/// on that older version from advancing to the current schema.
 abstract final class AppMigrations {
   /// Complete append-only migration chain.
   static const List<DatabaseMigration> all = [
