@@ -69,9 +69,9 @@ The system log is a cross-cutting history of meaningful activity, such as a task
 
 ## Privacy and data safety
 
-Tether currently persists its data in a local SQLite database. Database migrations are versioned so the schema can evolve without rebuilding the database from scratch.
+Tether persists its data in a local SQLite database. Message revision bodies are encrypted at rest with authenticated AES-256-GCM encryption. The encryption key is generated on the device and kept outside SQLite using the operating system's secure storage. Existing plaintext message revisions are encrypted when the message store is first accessed after upgrading.
 
-Application-level database encryption and fast locking are planned, but are **not yet implemented**. Until they are available, do not assume that data stored by Tether is encrypted independently of the phone's own storage protection.
+Message metadata, member names, handovers, tasks, and system-log summaries are not yet encrypted. Full-database encryption and fast locking remain planned, so message encryption should not be interpreted as protection for every field in the database.
 
 ## Technology
 
@@ -145,7 +145,7 @@ The GitHub Actions workflow in `.github/workflows/ci.yml` checks formatting and 
 
 The project is under active development. Important future work includes:
 
-- application-level encrypted storage;
+- encryption for non-message content and metadata;
 - fast locking and secure unlock flows;
 - native scheduled notifications for reminders;
 - fuller calendar and event support;

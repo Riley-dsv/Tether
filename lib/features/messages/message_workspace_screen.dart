@@ -76,6 +76,16 @@ class _MessageWorkspaceScreenState extends State<MessageWorkspaceScreen> {
   }
 
   Future<void> _loadWorkspace({String? selectId}) async {
+    try {
+      await _messages.prepare();
+    } catch (exception) {
+      if (!mounted) return;
+      setState(() {
+        _view.loadingWorkspace = false;
+        _view.workspaceError = exception.toString();
+      });
+      return;
+    }
     final results = await Future.wait<Object>([
       _workspace.members(),
       _workspace.conversations(viewerId: _view.currentAuthor?.id),
@@ -96,6 +106,7 @@ class _MessageWorkspaceScreenState extends State<MessageWorkspaceScreen> {
       _view.conversations = conversations;
       _view.selected = selected;
       _view.loadingWorkspace = false;
+      _view.workspaceError = null;
       if (_view.currentAuthor != null &&
           !members.any((member) => member.id == _view.currentAuthor!.id)) {
         _view.currentAuthor = null;
@@ -183,6 +194,40 @@ class _MessageWorkspaceScreenState extends State<MessageWorkspaceScreen> {
   Widget build(BuildContext context) {
     if (_view.loadingWorkspace) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (_view.workspaceError != null) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.lock_outline, size: 48),
+                const SizedBox(height: 16),
+                const Text(
+                  'Encrypted messages could not be unlocked.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _view.workspaceError!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AppColors.muted),
+                ),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: () {
+                    setState(() => _view.loadingWorkspace = true);
+                    _loadWorkspace();
+                  },
+                  child: const Text('Try again'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
     }
     return LayoutBuilder(
       builder: (context, constraints) {

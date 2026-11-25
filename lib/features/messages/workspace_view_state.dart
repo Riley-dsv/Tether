@@ -20,6 +20,7 @@ class WorkspaceViewState {
   SystemMember? currentAuthor;
   Set<String> recipientIds = {};
   bool loadingWorkspace = true;
+  String? workspaceError;
   bool showSearch = false;
   bool handoverMode = false;
   List<Handover> handovers = const [];

@@ -3,6 +3,7 @@ import 'package:note_app/features/groups/workspace_repository.dart';
 import 'package:note_app/features/handovers/handover_repository.dart';
 import 'package:note_app/features/home/home_repository.dart';
 import 'package:note_app/features/messages/message_repository.dart';
+import 'package:note_app/features/messages/message_cipher.dart';
 import 'package:note_app/features/system_log/system_log_repository.dart';
 import 'package:note_app/features/tasks/task_repository.dart';
 
@@ -32,7 +33,12 @@ class AppDependencies {
     final resolvedDatabase = database ?? AppDatabase();
     return AppDependencies._(
       database: resolvedDatabase,
-      messages: messages ?? MessageRepository(resolvedDatabase),
+      messages:
+          messages ??
+          MessageRepository(
+            resolvedDatabase,
+            cipher: AesGcmMessageCipher(SecureStorageMessageKeyProvider()),
+          ),
       workspace: workspace ?? WorkspaceRepository(resolvedDatabase),
       handovers: handovers ?? HandoverRepository(resolvedDatabase),
       home: home ?? HomeRepository(resolvedDatabase),

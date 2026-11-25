@@ -27,6 +27,7 @@ class AppDatabase {
           await db.execute('PRAGMA foreign_keys = ON');
           await db.rawQuery('PRAGMA journal_mode = WAL');
           await db.execute('PRAGMA synchronous = NORMAL');
+          await db.rawQuery('PRAGMA secure_delete = ON');
           // Android classifies busy_timeout as a row-returning pragma and
           // rejects it through execute(). rawQuery works on Android and FFI.
           await db.rawQuery('PRAGMA busy_timeout = 3000');
@@ -53,7 +54,7 @@ class AppDatabase {
             await txn.execute(MessageTables.createTasks);
             await txn.execute(MessageTables.createTaskAssignees);
             await txn.execute(MessageTables.createTaskEventIndex);
-            await txn.execute(MessageTables.createRevisions);
+            await txn.execute(MessageTables.createEncryptedRevisions);
             await txn.execute(MessageTables.createPins);
             await txn.execute(MessageTables.createReceipts);
             for (final index in MessageTables.indexes) {

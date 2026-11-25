@@ -8,6 +8,7 @@ import 'package:note_app/features/groups/workspace_repository.dart';
 import 'package:note_app/features/handovers/handover.dart';
 import 'package:note_app/features/handovers/handover_repository.dart';
 import 'package:note_app/features/messages/message.dart';
+import 'package:note_app/features/messages/message_cipher.dart';
 import 'package:note_app/features/messages/message_repository.dart';
 import 'package:note_app/features/system_log/system_event.dart';
 import 'package:note_app/features/system_log/system_log_repository.dart';
@@ -180,7 +181,11 @@ class _EmptyRepository extends MessageRepository {
   _EmptyRepository()
     : super(
         AppDatabase(factory: databaseFactoryFfi, path: inMemoryDatabasePath),
+        cipher: AesGcmMessageCipher.fromKeyBytes(List<int>.filled(32, 7)),
       );
+
+  @override
+  Future<void> prepare() async {}
 
   @override
   Future<List<Message>> watchSnapshot({
