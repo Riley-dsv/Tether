@@ -1,6 +1,15 @@
 import 'package:note_app/database/migrations/database_migration.dart';
 import 'package:sqflite/sqflite.dart';
 
+/// Version 6 — introduces the cross-feature system event log.
+///
+/// Creates the original frozen `system_events` schema with optional references
+/// to conversations, messages, and handovers. It also records one technical
+/// `database_upgraded` event so the upgrade itself is explainable without
+/// appearing in the default human-focused feed.
+///
+/// The inline SQL is intentionally historical; later columns belong in later
+/// migrations and must not be folded into this definition.
 class MigrationV6 implements DatabaseMigration {
   const MigrationV6();
   @override

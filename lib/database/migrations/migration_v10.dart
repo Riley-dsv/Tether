@@ -2,6 +2,12 @@ import 'package:note_app/database/migrations/database_migration.dart';
 import 'package:note_app/database/tables/message_tables.dart';
 import 'package:sqflite/sqflite.dart';
 
+/// Version 10 — introduces the unique all-members General conversation.
+///
+/// Adds the conversation `scope`, marks all existing spaces as groups, and
+/// enforces at most one `general` scope through a partial unique index. It then
+/// creates General and joins every non-archived member so existing profiles can
+/// use the shared space immediately after upgrade.
 class MigrationV10 implements DatabaseMigration {
   const MigrationV10();
 
