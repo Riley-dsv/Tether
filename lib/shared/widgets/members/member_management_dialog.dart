@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
-import 'package:note_app/shared/models/system_member.dart';
-import 'package:note_app/shared/widgets/member_avatar.dart';
+import 'package:note_app/features/members/system_member.dart';
+import 'package:note_app/shared/widgets/members/member_avatar.dart';
 
 /// Actions returned by [MemberManagementDialog].
 enum MemberManagementActionType { create, rename, remove }

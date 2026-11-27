@@ -10,11 +10,12 @@ import 'package:note_app/features/handovers/handover_repository.dart';
 import 'package:note_app/features/messages/message.dart';
 import 'package:note_app/features/messages/message_cipher.dart';
 import 'package:note_app/features/messages/message_repository.dart';
+import 'package:note_app/features/members/member_repository.dart';
 import 'package:note_app/features/system_log/system_event.dart';
 import 'package:note_app/features/system_log/system_log_repository.dart';
 import 'package:note_app/features/tasks/task.dart';
 import 'package:note_app/features/tasks/task_repository.dart';
-import 'package:note_app/shared/models/system_member.dart';
+import 'package:note_app/features/members/system_member.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
@@ -36,6 +37,7 @@ void main() {
             path: inMemoryDatabasePath,
           ),
           messages: _EmptyRepository(),
+          members: _EmptyMemberStore(),
           workspace: _EmptyWorkspaceRepository(),
         ),
       ),
@@ -66,6 +68,7 @@ void main() {
             path: inMemoryDatabasePath,
           ),
           messages: _EmptyRepository(),
+          members: _EmptyMemberStore(),
           workspace: _EmptyWorkspaceRepository(),
         ),
       ),
@@ -90,6 +93,7 @@ void main() {
             path: inMemoryDatabasePath,
           ),
           messages: _EmptyRepository(),
+          members: _PopulatedMemberStore(),
           workspace: _PopulatedWorkspaceRepository(),
           tasks: _EmptyTaskStore(),
           handovers: _EmptyHandoverStore(),
@@ -152,18 +156,12 @@ class _EmptyWorkspaceRepository extends WorkspaceRepository {
       );
 
   @override
-  Future<List<SystemMember>> members() async => const [];
-
-  @override
   Future<List<Conversation>> conversations({String? viewerId}) async =>
       const [];
 }
 
 class _PopulatedWorkspaceRepository extends _EmptyWorkspaceRepository {
-  final member = SystemMember.fromStorage(id: 'morgan', name: 'Morgan');
-
-  @override
-  Future<List<SystemMember>> members() async => [member];
+  final member = _testMember;
 
   @override
   Future<List<Conversation>> conversations({String? viewerId}) async => [
@@ -175,6 +173,31 @@ class _PopulatedWorkspaceRepository extends _EmptyWorkspaceRepository {
       unreadCount: 0,
     ),
   ];
+}
+
+final _testMember = SystemMember.fromStorage(id: 'morgan', name: 'Morgan');
+
+class _EmptyMemberStore implements MemberStore {
+  @override
+  Future<List<SystemMember>> members() async => const [];
+
+  @override
+  Future<SystemMember> createMember(String displayName) =>
+      throw UnimplementedError();
+
+  @override
+  Future<SystemMember> renameMember({
+    required String memberId,
+    required String displayName,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<void> archiveMember(String memberId) => throw UnimplementedError();
+}
+
+class _PopulatedMemberStore extends _EmptyMemberStore {
+  @override
+  Future<List<SystemMember>> members() async => [_testMember];
 }
 
 class _EmptyRepository extends MessageRepository {

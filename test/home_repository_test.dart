@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:note_app/database/app_database.dart';
 import 'package:note_app/features/groups/workspace_repository.dart';
+import 'package:note_app/features/members/member_repository.dart';
 import 'package:note_app/features/handovers/handover.dart';
 import 'package:note_app/features/handovers/handover_repository.dart';
 import 'package:note_app/features/home/home_repository.dart';
@@ -21,8 +22,9 @@ void main() {
     );
     addTearDown(database.close);
     final workspace = WorkspaceRepository(database);
-    final alice = await workspace.createMember('Alice');
-    final morgan = await workspace.createMember('Morgan');
+    final members = MemberRepository(database);
+    final alice = await members.createMember('Alice');
+    final morgan = await members.createMember('Morgan');
     final conversation = await workspace.createConversation(
       title: 'Home',
       memberIds: {alice.id, morgan.id},

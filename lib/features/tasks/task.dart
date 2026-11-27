@@ -1,4 +1,4 @@
-import 'package:note_app/shared/models/system_member.dart';
+import 'package:note_app/features/members/system_member.dart';
 
 /// Lifecycle state of a collaborative task.
 enum TaskStatus { todo, inProgress, done }

@@ -8,6 +8,7 @@ import 'package:note_app/features/home/home_repository.dart';
 import 'package:note_app/features/messages/message.dart';
 import 'package:note_app/features/messages/message_controller.dart';
 import 'package:note_app/features/messages/message_repository.dart';
+import 'package:note_app/features/members/member_repository.dart';
 import 'package:note_app/shared/widgets/handovers/handover_widgets.dart';
 import 'package:note_app/shared/widgets/messages/message_widgets.dart';
 import 'package:note_app/features/messages/workspace_view_state.dart';
@@ -15,9 +16,9 @@ import 'package:note_app/features/system_log/system_log_repository.dart';
 import 'package:note_app/features/system_log/system_log_view.dart';
 import 'package:note_app/features/tasks/task.dart';
 import 'package:note_app/features/tasks/task_repository.dart';
-import 'package:note_app/shared/models/system_member.dart';
+import 'package:note_app/features/members/system_member.dart';
 import 'package:note_app/shared/widgets/home/home_view.dart';
-import 'package:note_app/shared/widgets/home/member_management_dialog.dart';
+import 'package:note_app/shared/widgets/members/member_management_dialog.dart';
 import 'package:note_app/shared/widgets/tasks/task_widgets.dart';
 
 part 'workspace_actions.dart';
@@ -31,6 +32,7 @@ class MessageWorkspaceScreen extends StatefulWidget {
   const MessageWorkspaceScreen({
     super.key,
     required this.messages,
+    required this.members,
     required this.workspace,
     required this.handovers,
     required this.home,
@@ -41,7 +43,10 @@ class MessageWorkspaceScreen extends StatefulWidget {
   /// Encrypted message store.
   final MessageStore messages;
 
-  /// Member and conversation store.
+  /// Internal identity lifecycle store.
+  final MemberStore members;
+
+  /// Conversation and membership store.
   final WorkspaceStore workspace;
 
   /// Handover store.
@@ -64,6 +69,7 @@ class _MessageWorkspaceScreenState extends State<MessageWorkspaceScreen> {
   final _composer = TextEditingController();
   final _search = TextEditingController();
   late final MessageController _messages;
+  late final MemberStore _members;
   late final WorkspaceStore _workspace;
   late final HandoverStore _handoverRepository;
   late final HomeStore _homeRepository;
@@ -75,6 +81,7 @@ class _MessageWorkspaceScreenState extends State<MessageWorkspaceScreen> {
   void initState() {
     super.initState();
     _messages = MessageController(widget.messages)..addListener(_refresh);
+    _members = widget.members;
     _workspace = widget.workspace;
     _handoverRepository = widget.handovers;
     _homeRepository = widget.home;
@@ -103,7 +110,7 @@ class _MessageWorkspaceScreenState extends State<MessageWorkspaceScreen> {
       return;
     }
     final results = await Future.wait<Object>([
-      _workspace.members(),
+      _members.members(),
       _workspace.conversations(viewerId: _view.currentAuthor?.id),
     ]);
     final members = results[0] as List<SystemMember>;
@@ -183,7 +190,7 @@ class _MessageWorkspaceScreenState extends State<MessageWorkspaceScreen> {
       builder: (_) => const CreateMemberDialog(),
     );
     if (name == null) return;
-    final member = await _workspace.createMember(name);
+    final member = await _members.createMember(name);
     if (addToSelectedConversation && _view.selected != null) {
       await _workspace.addMemberToConversation(
         conversationId: _view.selected!.id,

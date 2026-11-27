@@ -1,4 +1,4 @@
-import 'package:note_app/shared/models/system_member.dart';
+import 'package:note_app/features/members/system_member.dart';
 
 /// Urgency used to order and highlight a handover.
 enum HandoverPriority { low, normal, high, urgent }
