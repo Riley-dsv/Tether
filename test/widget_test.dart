@@ -119,6 +119,9 @@ void main() {
     await tester.ensureVisible(find.byKey(const Key('message-author-morgan')));
     await tester.tap(find.byKey(const Key('message-author-morgan')));
     await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('unlock-member-pin')), '1234');
+    await tester.tap(find.text('Unlock'));
+    await tester.pumpAndSettle();
     expect(
       tester.widget<Text>(find.byKey(const Key('message-current-author'))).data,
       'Morgan',
@@ -175,14 +178,28 @@ class _PopulatedWorkspaceRepository extends _EmptyWorkspaceRepository {
   ];
 }
 
-final _testMember = SystemMember.fromStorage(id: 'morgan', name: 'Morgan');
+final _testMember = SystemMember.fromStorage(
+  id: 'morgan',
+  name: 'Morgan',
+  hasPin: true,
+);
 
 class _EmptyMemberStore implements MemberStore {
   @override
   Future<List<SystemMember>> members() async => const [];
 
   @override
-  Future<SystemMember> createMember(String displayName) =>
+  Future<SystemMember> createMember(
+    String displayName, {
+    required String pin,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<void> setPin({required String memberId, required String pin}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<bool> verifyPin({required String memberId, required String pin}) =>
       throw UnimplementedError();
 
   @override
@@ -198,6 +215,12 @@ class _EmptyMemberStore implements MemberStore {
 class _PopulatedMemberStore extends _EmptyMemberStore {
   @override
   Future<List<SystemMember>> members() async => [_testMember];
+
+  @override
+  Future<bool> verifyPin({
+    required String memberId,
+    required String pin,
+  }) async => memberId == _testMember.id && pin == '1234';
 }
 
 class _EmptyRepository extends MessageRepository {

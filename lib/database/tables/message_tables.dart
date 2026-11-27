@@ -10,7 +10,10 @@ abstract final class MessageTables {
       id TEXT PRIMARY KEY,
       display_name TEXT NOT NULL,
       created_at TEXT NOT NULL,
-      deleted_at TEXT
+      deleted_at TEXT,
+      pin_hash TEXT,
+      pin_salt TEXT,
+      pin_iterations INTEGER
     )
   ''';
 

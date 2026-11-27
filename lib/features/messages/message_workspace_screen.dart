@@ -19,6 +19,7 @@ import 'package:note_app/features/tasks/task_repository.dart';
 import 'package:note_app/features/members/system_member.dart';
 import 'package:note_app/shared/widgets/home/home_view.dart';
 import 'package:note_app/shared/widgets/members/member_management_dialog.dart';
+import 'package:note_app/shared/widgets/members/member_pin_dialogs.dart';
 import 'package:note_app/shared/widgets/tasks/task_widgets.dart';
 
 part 'workspace_actions.dart';
@@ -185,19 +186,19 @@ class _MessageWorkspaceScreenState extends State<MessageWorkspaceScreen> {
   }
 
   Future<void> _createMember({bool addToSelectedConversation = true}) async {
-    final name = await showDialog<String>(
+    final draft = await showDialog<MemberDraft>(
       context: context,
       builder: (_) => const CreateMemberDialog(),
     );
-    if (name == null) return;
-    final member = await _members.createMember(name);
+    if (draft == null) return;
+    final member = await _members.createMember(draft.name, pin: draft.pin);
     if (addToSelectedConversation && _view.selected != null) {
       await _workspace.addMemberToConversation(
         conversationId: _view.selected!.id,
         memberId: member.id,
       );
     }
-    await _changeCurrentMember(member);
+    await _activateCurrentMember(member);
   }
 
   Future<void> _createConversation() async {
@@ -486,9 +487,7 @@ class _MessageWorkspaceScreenState extends State<MessageWorkspaceScreen> {
             recipientIds: _view.recipientIds,
             onChooseRecipients: _chooseRecipients,
             onCreateMember: _createMember,
-            onAuthorChanged: (author) {
-              _changeCurrentMember(author);
-            },
+            onAuthorChanged: _changeCurrentMember,
             onSend: _send,
           ),
         ],

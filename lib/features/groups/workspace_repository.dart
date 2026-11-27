@@ -78,7 +78,7 @@ class WorkspaceRepository implements WorkspaceStore {
         [viewerId, viewerId, viewerId, viewerId],
       ),
       db.rawQuery('''
-        SELECT cm.conversation_id, m.id, m.display_name
+        SELECT cm.conversation_id, m.id, m.display_name, m.pin_hash
         FROM conversation_members cm
         JOIN members m ON m.id = cm.member_id AND m.deleted_at IS NULL
         ORDER BY cm.conversation_id, m.display_name COLLATE NOCASE
@@ -94,6 +94,7 @@ class WorkspaceRepository implements WorkspaceStore {
             SystemMember.fromStorage(
               id: row['id'] as String,
               name: row['display_name'] as String,
+              hasPin: row['pin_hash'] != null,
             ),
           );
     }
