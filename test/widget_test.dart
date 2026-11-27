@@ -150,6 +150,51 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets('anonymous identity never requests PIN setup or verification', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final members = _TrackingMemberStore();
+
+    await tester.pumpWidget(
+      TetherApp(
+        dependencies: AppDependencies(
+          database: AppDatabase(
+            factory: databaseFactoryFfi,
+            path: inMemoryDatabasePath,
+          ),
+          messages: _EmptyRepository(),
+          members: members,
+          workspace: _PopulatedWorkspaceRepository(),
+        ),
+      ),
+    );
+    for (var frame = 0; frame < 20; frame++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    await tester.tap(find.text('Messages'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const Key('message-author-selector')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('message-author-unknown')));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<Text>(find.byKey(const Key('message-current-author'))).data,
+      'Unknown',
+    );
+    expect(find.byKey(const Key('unlock-member-pin')), findsNothing);
+    expect(find.text('Set PIN'), findsNothing);
+    expect(members.verifyPinCalls, 0);
+    expect(members.setPinCalls, 0);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 }
 
 class _EmptyWorkspaceRepository extends WorkspaceRepository {
@@ -221,6 +266,25 @@ class _PopulatedMemberStore extends _EmptyMemberStore {
     required String memberId,
     required String pin,
   }) async => memberId == _testMember.id && pin == '1234';
+}
+
+class _TrackingMemberStore extends _PopulatedMemberStore {
+  int verifyPinCalls = 0;
+  int setPinCalls = 0;
+
+  @override
+  Future<bool> verifyPin({
+    required String memberId,
+    required String pin,
+  }) async {
+    verifyPinCalls++;
+    return super.verifyPin(memberId: memberId, pin: pin);
+  }
+
+  @override
+  Future<void> setPin({required String memberId, required String pin}) async {
+    setPinCalls++;
+  }
 }
 
 class _EmptyRepository extends MessageRepository {
