@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:note_app/shared/widgets/home/member_management_dialog.dart';
+import 'package:note_app/shared/widgets/members/member_management_dialog.dart';
 
 void main() {
   testWidgets('allows adding a member when the member list is empty', (

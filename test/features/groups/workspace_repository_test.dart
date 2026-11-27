@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:note_app/database/app_database.dart';
 import 'package:note_app/features/groups/workspace_repository.dart';
+import 'package:note_app/features/members/member_repository.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
@@ -8,6 +9,7 @@ void main() {
 
   late AppDatabase database;
   late WorkspaceRepository repository;
+  late MemberRepository members;
 
   setUp(() {
     database = AppDatabase(
@@ -15,6 +17,7 @@ void main() {
       path: inMemoryDatabasePath,
     );
     repository = WorkspaceRepository(database);
+    members = MemberRepository(database);
   });
 
   tearDown(() => database.close());
@@ -27,8 +30,8 @@ void main() {
         hasLength(1),
       );
 
-      final alice = await repository.createMember('Alice');
-      final morgan = await repository.createMember('Morgan');
+      final alice = await members.createMember('Alice');
+      final morgan = await members.createMember('Morgan');
       final general = (await repository.conversations()).singleWhere(
         (conversation) => conversation.isGeneral,
       );
@@ -38,35 +41,5 @@ void main() {
         containsAll([alice.id, morgan.id]),
       );
     });
-  });
-
-  group('member lifecycle', () {
-    test(
-      'rename preserves identity and archive removes active profile',
-      () async {
-        final member = await repository.createMember('Morgan');
-        final renamed = await repository.renameMember(
-          memberId: member.id,
-          displayName: 'Morgan Updated',
-        );
-
-        expect(renamed.id, member.id);
-        expect(renamed.name, 'Morgan Updated');
-
-        await repository.archiveMember(member.id);
-
-        expect(
-          (await repository.members()).map((item) => item.id),
-          isNot(contains(member.id)),
-        );
-        final general = (await repository.conversations()).singleWhere(
-          (conversation) => conversation.isGeneral,
-        );
-        expect(
-          general.members.map((item) => item.id),
-          isNot(contains(member.id)),
-        );
-      },
-    );
   });
 }

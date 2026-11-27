@@ -2,8 +2,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:note_app/app/app_theme.dart';
 import 'package:note_app/features/groups/conversation.dart';
 import 'package:note_app/features/messages/message.dart';
-import 'package:note_app/shared/models/system_member.dart';
-import 'package:note_app/shared/widgets/member_avatar.dart';
+import 'package:note_app/features/members/system_member.dart';
+import 'package:note_app/shared/widgets/members/member_avatar.dart';
 
 part 'workspace_navigation.dart';
 part 'conversation_list.dart';

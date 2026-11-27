@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:note_app/database/app_database.dart';
 import 'package:note_app/features/groups/workspace_repository.dart';
+import 'package:note_app/features/members/member_repository.dart';
 import 'package:note_app/features/system_log/system_log_repository.dart';
 import 'package:note_app/features/tasks/task.dart';
 import 'package:note_app/features/tasks/task_repository.dart';
@@ -11,6 +12,7 @@ void main() {
 
   late AppDatabase database;
   late WorkspaceRepository workspace;
+  late MemberRepository members;
   late TaskRepository tasks;
 
   setUp(() {
@@ -19,14 +21,15 @@ void main() {
       path: inMemoryDatabasePath,
     );
     workspace = WorkspaceRepository(database);
+    members = MemberRepository(database);
     tasks = TaskRepository(database);
   });
 
   tearDown(() => database.close());
 
   test('persists anyone and multiple-assignee task modes', () async {
-    final alice = await workspace.createMember('Alice');
-    final morgan = await workspace.createMember('Morgan');
+    final alice = await members.createMember('Alice');
+    final morgan = await members.createMember('Morgan');
     final conversation = await workspace.createConversation(
       title: 'Shared space',
       memberIds: {alice.id, morgan.id},
@@ -104,7 +107,7 @@ void main() {
   });
 
   test('specific assignment requires at least one assignee', () async {
-    final alice = await workspace.createMember('Alice');
+    final alice = await members.createMember('Alice');
     final conversation = await workspace.createConversation(
       title: 'Home',
       memberIds: {alice.id},

@@ -4,6 +4,7 @@ import 'package:note_app/features/handovers/handover_repository.dart';
 import 'package:note_app/features/home/home_repository.dart';
 import 'package:note_app/features/messages/message_repository.dart';
 import 'package:note_app/features/messages/message_cipher.dart';
+import 'package:note_app/features/members/member_repository.dart';
 import 'package:note_app/features/system_log/system_log_repository.dart';
 import 'package:note_app/features/tasks/task_repository.dart';
 
@@ -13,6 +14,7 @@ class AppDependencies {
   AppDependencies._({
     required this.database,
     required this.messages,
+    required this.members,
     required this.workspace,
     required this.handovers,
     required this.home,
@@ -29,6 +31,7 @@ class AppDependencies {
   factory AppDependencies({
     AppDatabase? database,
     MessageStore? messages,
+    MemberStore? members,
     WorkspaceStore? workspace,
     HandoverStore? handovers,
     HomeStore? home,
@@ -44,6 +47,7 @@ class AppDependencies {
             resolvedDatabase,
             cipher: AesGcmMessageCipher(SecureStorageMessageKeyProvider()),
           ),
+      members: members ?? MemberRepository(resolvedDatabase),
       workspace: workspace ?? WorkspaceRepository(resolvedDatabase),
       handovers: handovers ?? HandoverRepository(resolvedDatabase),
       home: home ?? HomeRepository(resolvedDatabase),
@@ -59,7 +63,10 @@ class AppDependencies {
   /// Message persistence and revision operations.
   final MessageStore messages;
 
-  /// Member and conversation persistence.
+  /// Internal identity lifecycle persistence.
+  final MemberStore members;
+
+  /// Conversation and membership persistence.
   final WorkspaceStore workspace;
 
   /// Structured handover persistence.

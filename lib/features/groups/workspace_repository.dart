@@ -1,27 +1,11 @@
 import 'package:note_app/database/app_database.dart';
-import 'package:note_app/database/tables/message_tables.dart';
 import 'package:note_app/features/groups/conversation.dart';
-import 'package:note_app/shared/models/system_member.dart';
+import 'package:note_app/features/members/system_member.dart';
 import 'package:note_app/features/system_log/system_log_repository.dart';
 import 'package:sqflite/sqflite.dart';
 
-/// Persistence contract for internal identities and conversation membership.
+/// Persistence contract for conversations and their membership.
 abstract interface class WorkspaceStore {
-  /// Lists active member profiles in display-name order.
-  Future<List<SystemMember>> members();
-
-  /// Creates a member and automatically joins them to the general space.
-  Future<SystemMember> createMember(String displayName);
-
-  /// Changes presentation identity without rewriting historical attribution.
-  Future<SystemMember> renameMember({
-    required String memberId,
-    required String displayName,
-  });
-
-  /// Removes a member from active selection while retaining historical rows.
-  Future<void> archiveMember(String memberId);
-
   /// Lists spaces and viewer-specific unread counts.
   ///
   /// A `null` [viewerId] yields no attributed unread count.
@@ -42,102 +26,14 @@ abstract interface class WorkspaceStore {
 
 /// SQLite implementation of [WorkspaceStore].
 ///
-/// Member creation and membership changes are transactional with their system
-/// log events. The unique general space is managed as a database invariant.
+/// Membership changes are transactional with their system log events. The
+/// unique general space is managed as a database invariant.
 class WorkspaceRepository implements WorkspaceStore {
   /// Creates a workspace repository over [AppDatabase].
   WorkspaceRepository(this._appDatabase);
 
   final AppDatabase _appDatabase;
   int _sequence = 0;
-
-  @override
-  Future<List<SystemMember>> members() async {
-    final db = await _appDatabase.database;
-    final rows = await db.query(
-      'members',
-      where: 'deleted_at IS NULL',
-      orderBy: 'display_name COLLATE NOCASE',
-    );
-    return rows
-        .map(
-          (row) => SystemMember.fromStorage(
-            id: row['id'] as String,
-            name: row['display_name'] as String,
-          ),
-        )
-        .toList(growable: false);
-  }
-
-  @override
-  Future<SystemMember> renameMember({
-    required String memberId,
-    required String displayName,
-  }) async {
-    final name = displayName.trim();
-    if (name.isEmpty) throw ArgumentError.value(displayName, 'displayName');
-    final db = await _appDatabase.database;
-    await db.transaction((txn) async {
-      final updated = await txn.update(
-        'members',
-        {'display_name': name},
-        where: 'id = ? AND deleted_at IS NULL',
-        whereArgs: [memberId],
-      );
-      if (updated == 0) throw StateError('Member no longer exists');
-      await SystemLogRepository.record(
-        txn,
-        type: 'member_renamed',
-        summary: 'renamed a member profile to “$name”',
-      );
-    });
-    return SystemMember.fromStorage(id: memberId, name: name);
-  }
-
-  @override
-  Future<void> archiveMember(String memberId) async {
-    final db = await _appDatabase.database;
-    await db.transaction((txn) async {
-      final archived = await txn.update(
-        'members',
-        {'deleted_at': DateTime.now().toUtc().toIso8601String()},
-        where: 'id = ? AND deleted_at IS NULL',
-        whereArgs: [memberId],
-      );
-      if (archived == 0) throw StateError('Member no longer exists');
-      await SystemLogRepository.record(
-        txn,
-        type: 'member_archived',
-        summary: 'removed a member profile',
-      );
-    });
-  }
-
-  @override
-  Future<SystemMember> createMember(String displayName) async {
-    final name = displayName.trim();
-    if (name.isEmpty) throw ArgumentError.value(displayName, 'displayName');
-    final db = await _appDatabase.database;
-    final id = _newId('member');
-    await db.transaction((txn) async {
-      await txn.insert('members', {
-        'id': id,
-        'display_name': name,
-        'created_at': DateTime.now().toUtc().toIso8601String(),
-      });
-      await txn.insert('conversation_members', {
-        'conversation_id': MessageTables.generalConversationId,
-        'member_id': id,
-        'joined_at': DateTime.now().toUtc().toIso8601String(),
-      });
-      await SystemLogRepository.record(
-        txn,
-        type: 'member_created',
-        summary: 'created member profile “$name”',
-      );
-    });
-    return SystemMember.fromStorage(id: id, name: name);
-  }
 
   @override
   Future<List<Conversation>> conversations({String? viewerId}) async {

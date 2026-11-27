@@ -42,6 +42,7 @@ class _TetherAppState extends State<TetherApp> {
     theme: buildAppTheme(),
     home: MessageWorkspaceScreen(
       messages: _dependencies.messages,
+      members: _dependencies.members,
       workspace: _dependencies.workspace,
       handovers: _dependencies.handovers,
       home: _dependencies.home,

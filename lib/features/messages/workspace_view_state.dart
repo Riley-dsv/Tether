@@ -3,7 +3,7 @@ import 'package:note_app/features/handovers/handover.dart';
 import 'package:note_app/features/home/home_summary.dart';
 import 'package:note_app/features/system_log/system_event.dart';
 import 'package:note_app/features/tasks/task.dart';
-import 'package:note_app/shared/models/system_member.dart';
+import 'package:note_app/features/members/system_member.dart';
 
 /// Ephemeral presentation state for the workspace screen.
 ///

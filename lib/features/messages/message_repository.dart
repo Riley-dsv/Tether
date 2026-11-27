@@ -1,7 +1,7 @@
 import 'package:note_app/database/app_database.dart';
 import 'package:note_app/features/messages/message.dart';
 import 'package:note_app/features/messages/message_cipher.dart';
-import 'package:note_app/shared/models/system_member.dart';
+import 'package:note_app/features/members/system_member.dart';
 import 'package:note_app/features/system_log/system_log_repository.dart';
 import 'package:sqflite/sqflite.dart';
 

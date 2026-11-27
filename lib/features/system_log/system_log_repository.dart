@@ -1,6 +1,6 @@
 import 'package:note_app/database/app_database.dart';
 import 'package:note_app/features/system_log/system_event.dart';
-import 'package:note_app/shared/models/system_member.dart';
+import 'package:note_app/features/members/system_member.dart';
 import 'package:sqflite/sqflite.dart';
 
 /// Query contract for the cross-cutting human-readable activity feed.

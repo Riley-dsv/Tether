@@ -4,7 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:note_app/app/app_dependencies.dart';
 import 'package:note_app/app/tether_app.dart';
 import 'package:note_app/database/app_database.dart';
-import 'package:note_app/features/groups/workspace_repository.dart';
+import 'package:note_app/features/members/member_repository.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite/sqflite.dart';
 
@@ -21,8 +21,7 @@ void main() {
       await database.close();
       await databaseFactory.deleteDatabase(databasePath);
     });
-    final workspace = WorkspaceRepository(database);
-    final morgan = await workspace.createMember('Morgan');
+    final morgan = await MemberRepository(database).createMember('Morgan');
     final dependencies = AppDependencies(database: database);
 
     await tester.pumpWidget(TetherApp(dependencies: dependencies));

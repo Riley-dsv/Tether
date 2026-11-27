@@ -135,7 +135,7 @@ extension _WorkspaceActions on _MessageWorkspaceScreenState {
       );
       controller.dispose();
       if (name == null || name.isEmpty || name == member.name) return;
-      final renamed = await _workspace.renameMember(
+      final renamed = await _members.renameMember(
         memberId: member.id,
         displayName: name,
       );
@@ -167,7 +167,7 @@ extension _WorkspaceActions on _MessageWorkspaceScreenState {
       ),
     );
     if (confirmed != true) return;
-    await _workspace.archiveMember(member.id);
+    await _members.archiveMember(member.id);
     if (_view.currentAuthor?.id == member.id) {
       await _changeCurrentMember(null);
     } else {

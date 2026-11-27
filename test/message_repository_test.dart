@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:note_app/database/app_database.dart';
 import 'package:note_app/features/groups/workspace_repository.dart';
+import 'package:note_app/features/members/member_repository.dart';
 import 'package:note_app/features/handovers/handover.dart';
 import 'package:note_app/features/handovers/handover_repository.dart';
 import 'package:note_app/features/messages/message.dart';
@@ -14,6 +15,7 @@ void main() {
 
   late AppDatabase database;
   late WorkspaceRepository workspace;
+  late MemberRepository members;
   late MessageRepository repository;
   late HandoverRepository handoverRepository;
   late SystemLogRepository systemLogRepository;
@@ -29,19 +31,20 @@ void main() {
     );
     await database.database;
     workspace = WorkspaceRepository(database);
+    members = MemberRepository(database);
     repository = MessageRepository(
       database,
       cipher: AesGcmMessageCipher.fromKeyBytes(List<int>.filled(32, 7)),
     );
     handoverRepository = HandoverRepository(database);
     systemLogRepository = SystemLogRepository(database);
-    expect(await workspace.members(), isEmpty);
+    expect(await members.members(), isEmpty);
     final initialConversations = await workspace.conversations();
     expect(initialConversations, hasLength(1));
     expect(initialConversations.single.isGeneral, isTrue);
-    memberOneId = (await workspace.createMember('Member One')).id;
-    memberTwoId = (await workspace.createMember('Member Two')).id;
-    memberThreeId = (await workspace.createMember('Member Three')).id;
+    memberOneId = (await members.createMember('Member One')).id;
+    memberTwoId = (await members.createMember('Member Two')).id;
+    memberThreeId = (await members.createMember('Member Three')).id;
     conversationId = (await workspace.createConversation(
       title: 'Test conversation',
       memberIds: {memberOneId, memberTwoId, memberThreeId},
@@ -105,10 +108,10 @@ void main() {
   });
 
   test('members and conversations are created from user input', () async {
-    final members = await workspace.members();
+    final activeMembers = await members.members();
     final conversations = await workspace.conversations();
     expect(
-      members.map((member) => member.name),
+      activeMembers.map((member) => member.name),
       containsAll(['Member One', 'Member Two']),
     );
     final group = conversations.singleWhere(
@@ -132,20 +135,20 @@ void main() {
       content: 'Keep my attribution',
       authorId: memberThreeId,
     );
-    final renamed = await workspace.renameMember(
+    final renamed = await members.renameMember(
       memberId: memberThreeId,
       displayName: 'Renamed Member',
     );
     expect(renamed.name, 'Renamed Member');
     expect(
-      (await workspace.members()).map((member) => member.name),
+      (await members.members()).map((member) => member.name),
       contains('Renamed Member'),
     );
 
-    await workspace.archiveMember(memberThreeId);
+    await members.archiveMember(memberThreeId);
 
     expect(
-      (await workspace.members()).map((member) => member.id),
+      (await members.members()).map((member) => member.id),
       isNot(contains(memberThreeId)),
     );
     expect(
@@ -497,7 +500,7 @@ void main() {
   });
 
   test('message relationships and membership are enforced', () async {
-    final outsider = await workspace.createMember('Outside Member');
+    final outsider = await members.createMember('Outside Member');
     await expectLater(
       repository.create(
         conversationId: conversationId,

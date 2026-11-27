@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:note_app/app/app_theme.dart';
 import 'package:note_app/features/system_log/system_event.dart';
-import 'package:note_app/shared/widgets/member_avatar.dart';
+import 'package:note_app/shared/widgets/members/member_avatar.dart';
 
 /// Cross-feature activity feed with optional technical events.
 class SystemLogView extends StatelessWidget {
