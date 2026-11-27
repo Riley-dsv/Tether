@@ -17,7 +17,7 @@ void main() {
         AppMigrations.currentVersion,
         AppMigrations.all.last.targetVersion,
       );
-      expect(AppMigrations.currentVersion, 11);
+      expect(AppMigrations.currentVersion, 12);
     });
   });
 }

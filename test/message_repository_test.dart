@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:note_app/database/app_database.dart';
 import 'package:note_app/features/groups/workspace_repository.dart';
 import 'package:note_app/features/members/member_repository.dart';
+import 'package:note_app/features/members/member_pin.dart';
 import 'package:note_app/features/handovers/handover.dart';
 import 'package:note_app/features/handovers/handover_repository.dart';
 import 'package:note_app/features/messages/message.dart';
@@ -31,7 +32,7 @@ void main() {
     );
     await database.database;
     workspace = WorkspaceRepository(database);
-    members = MemberRepository(database);
+    members = MemberRepository(database, pinCodec: _testPinCodec());
     repository = MessageRepository(
       database,
       cipher: AesGcmMessageCipher.fromKeyBytes(List<int>.filled(32, 7)),
@@ -42,9 +43,12 @@ void main() {
     final initialConversations = await workspace.conversations();
     expect(initialConversations, hasLength(1));
     expect(initialConversations.single.isGeneral, isTrue);
-    memberOneId = (await members.createMember('Member One')).id;
-    memberTwoId = (await members.createMember('Member Two')).id;
-    memberThreeId = (await members.createMember('Member Three')).id;
+    memberOneId = (await members.createMember('Member One', pin: '1234')).id;
+    memberTwoId = (await members.createMember('Member Two', pin: '1234')).id;
+    memberThreeId = (await members.createMember(
+      'Member Three',
+      pin: '1234',
+    )).id;
     conversationId = (await workspace.createConversation(
       title: 'Test conversation',
       memberIds: {memberOneId, memberTwoId, memberThreeId},
@@ -88,6 +92,11 @@ void main() {
             'title': 'Existing space',
             'created_at': '2026-01-01T00:00:00Z',
           });
+          await db.insert('members', {
+            'id': 'legacy_member',
+            'display_name': 'Legacy member',
+            'created_at': '2026-01-01T00:00:00Z',
+          });
           await db.insert('message_entities', {
             'id': 'message',
             'conversation_id': 'space',
@@ -105,6 +114,9 @@ void main() {
     expect(entity['id'], 'message');
     expect(entity['visibility'], 'shared');
     expect(await db.query('message_recipients'), isEmpty);
+    final legacyMembers = await MemberRepository(migrated).members();
+    expect(legacyMembers.single.id, 'legacy_member');
+    expect(legacyMembers.single.hasPin, isFalse);
   });
 
   test('members and conversations are created from user input', () async {
@@ -500,7 +512,7 @@ void main() {
   });
 
   test('message relationships and membership are enforced', () async {
-    final outsider = await members.createMember('Outside Member');
+    final outsider = await members.createMember('Outside Member', pin: '1234');
     await expectLater(
       repository.create(
         conversationId: conversationId,
@@ -591,3 +603,9 @@ void main() {
     expect(third.last.text, 'Paged message 0');
   });
 }
+
+MemberPinCodec _testPinCodec() => MemberPinCodec(
+  iterations: 10,
+  runInBackground: false,
+  createSalt: () => List<int>.filled(16, 7),
+);

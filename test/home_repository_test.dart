@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:note_app/database/app_database.dart';
 import 'package:note_app/features/groups/workspace_repository.dart';
 import 'package:note_app/features/members/member_repository.dart';
+import 'package:note_app/features/members/member_pin.dart';
 import 'package:note_app/features/handovers/handover.dart';
 import 'package:note_app/features/handovers/handover_repository.dart';
 import 'package:note_app/features/home/home_repository.dart';
@@ -22,9 +23,9 @@ void main() {
     );
     addTearDown(database.close);
     final workspace = WorkspaceRepository(database);
-    final members = MemberRepository(database);
-    final alice = await members.createMember('Alice');
-    final morgan = await members.createMember('Morgan');
+    final members = MemberRepository(database, pinCodec: _testPinCodec());
+    final alice = await members.createMember('Alice', pin: '1234');
+    final morgan = await members.createMember('Morgan', pin: '1234');
     final conversation = await workspace.createConversation(
       title: 'Home',
       memberIds: {alice.id, morgan.id},
@@ -69,3 +70,9 @@ void main() {
     expect(summary.nextItem?.title, 'Due today');
   });
 }
+
+MemberPinCodec _testPinCodec() => MemberPinCodec(
+  iterations: 10,
+  runInBackground: false,
+  createSalt: () => List<int>.filled(16, 7),
+);
