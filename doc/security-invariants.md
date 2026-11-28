@@ -63,6 +63,13 @@ Unknown and must never resolve to a synthetic member row.
 
 ## Authorization
 
+- Widgets may request an identity or render an authorized projection, but they
+  must never grant permission. Application-layer services must bind requested
+  member identifiers to the active session, and repositories must independently
+  enforce object visibility.
+- An arbitrary member identifier supplied by a caller is not proof of
+  authentication. Reads must fail closed to the anonymous projection and
+  mutations must be rejected when the active session does not own that member.
 - Conversation membership and content visibility are independent checks.
 - Search must filter authorized rows before decrypting or comparing content.
   Unauthorized content must not affect results, counts, or snippets.
@@ -78,6 +85,32 @@ Unknown and must never resolve to a synthetic member row.
   related message, not merely the containing conversation.
 - Unknown may read shared content where the product explicitly permits it, but
   must not gain targeted or member-private visibility.
+
+### Indirect projections
+
+Protected content must not be disclosed through a secondary feature:
+
+- search results must not contain excerpts or matches from unauthorized rows;
+- home summaries must not expose protected counts, titles, or scheduled items;
+- system logs must not expose protected content, activity summaries, or private
+  conversation titles;
+- notification previews must remain generic until the current session is
+  authorized;
+- forwarding must authorize both the source and destination;
+- revision history and tombstones must use the current message's visibility;
+- exports must not include protected workspace data without an explicitly
+  authorized, encrypted export design.
+
+## Platform privacy
+
+- Android production windows must use `FLAG_SECURE` so screenshots, screen
+  recording, and the recents/overview snapshot cannot capture decrypted
+  content.
+- Android operating-system backup must remain disabled unless a future backup
+  format provides explicit encryption, authorization, integrity verification,
+  and safe restoration semantics.
+- Platform privacy controls are defense in depth. They do not replace session
+  validation or repository authorization.
 
 ## Credential persistence and recovery
 

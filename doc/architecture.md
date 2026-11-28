@@ -33,6 +33,11 @@ Visibility and conversation membership are separate checks. A member must have
 access to the conversation and, for targeted messages, be the author or an
 explicit recipient. Shared messages may be read without attributing the viewer.
 
+Widgets do not grant visibility. Production stores are wrapped by
+session-bound application services that validate requested member identifiers
+against the active authenticated session. Repository queries remain responsible
+for object-level filtering, providing a second enforcement boundary.
+
 ## Encryption
 
 Every non-deletion message revision is encrypted independently with AES-256-GCM.
