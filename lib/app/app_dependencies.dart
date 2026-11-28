@@ -6,6 +6,7 @@ import 'package:note_app/features/messages/message_repository.dart';
 import 'package:note_app/features/messages/message_cipher.dart';
 import 'package:note_app/features/members/member_repository.dart';
 import 'package:note_app/features/members/member_authenticator.dart';
+import 'package:note_app/features/members/member_session.dart';
 import 'package:note_app/features/system_log/system_log_repository.dart';
 import 'package:note_app/features/tasks/task_repository.dart';
 
@@ -17,6 +18,7 @@ class AppDependencies {
     required this.messages,
     required this.members,
     required this.authentication,
+    required this.session,
     required this.workspace,
     required this.handovers,
     required this.home,
@@ -35,6 +37,7 @@ class AppDependencies {
     MessageStore? messages,
     MemberStore? members,
     MemberAuthentication? authentication,
+    MemberSession? session,
     WorkspaceStore? workspace,
     HandoverStore? handovers,
     HomeStore? home,
@@ -58,6 +61,7 @@ class AppDependencies {
             database: resolvedDatabase,
             members: resolvedMembers,
           ),
+      session: session ?? MemberSession(),
       workspace: workspace ?? WorkspaceRepository(resolvedDatabase),
       handovers: handovers ?? HandoverRepository(resolvedDatabase),
       home: home ?? HomeRepository(resolvedDatabase),
@@ -78,6 +82,9 @@ class AppDependencies {
 
   /// Persisted member authentication and global rate limiting.
   final MemberAuthentication authentication;
+
+  /// Ephemeral active identity and timeout-based revocation.
+  final MemberSession session;
 
   /// Conversation and membership persistence.
   final WorkspaceStore workspace;

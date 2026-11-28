@@ -92,6 +92,12 @@ extension _WorkspaceActions on _MessageWorkspaceScreenState {
   }
 
   Future<void> _activateCurrentMember(SystemMember? member) async {
+    _messages.clearSensitiveCache();
+    if (member == null) {
+      _session.useAnonymous();
+    } else {
+      _session.activate(member);
+    }
     _update(() => _view.currentAuthor = member);
     await _messages.setViewer(member?.id, reloadConversation: !_view.homeMode);
     await _loadWorkspace(selectId: _view.selected?.id);

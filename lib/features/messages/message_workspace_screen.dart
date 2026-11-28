@@ -11,6 +11,7 @@ import 'package:note_app/features/messages/message_repository.dart';
 import 'package:note_app/features/members/member_repository.dart';
 import 'package:note_app/features/members/member_authenticator.dart';
 import 'package:note_app/features/members/attribution_identity.dart';
+import 'package:note_app/features/members/member_session.dart';
 import 'package:note_app/shared/widgets/handovers/handover_widgets.dart';
 import 'package:note_app/shared/widgets/messages/message_widgets.dart';
 import 'package:note_app/features/messages/workspace_view_state.dart';
@@ -37,6 +38,7 @@ class MessageWorkspaceScreen extends StatefulWidget {
     required this.messages,
     required this.members,
     required this.authentication,
+    required this.session,
     required this.workspace,
     required this.handovers,
     required this.home,
@@ -52,6 +54,9 @@ class MessageWorkspaceScreen extends StatefulWidget {
 
   /// Member authentication and persisted throttling.
   final MemberAuthentication authentication;
+
+  /// Active member session and lifecycle timeout state.
+  final MemberSession session;
 
   /// Conversation and membership store.
   final WorkspaceStore workspace;
@@ -72,12 +77,14 @@ class MessageWorkspaceScreen extends StatefulWidget {
   State<MessageWorkspaceScreen> createState() => _MessageWorkspaceScreenState();
 }
 
-class _MessageWorkspaceScreenState extends State<MessageWorkspaceScreen> {
+class _MessageWorkspaceScreenState extends State<MessageWorkspaceScreen>
+    with WidgetsBindingObserver {
   final _composer = TextEditingController();
   final _search = TextEditingController();
   late final MessageController _messages;
   late final MemberStore _members;
   late final MemberAuthentication _authentication;
+  late final MemberSession _session;
   late final WorkspaceStore _workspace;
   late final HandoverStore _handoverRepository;
   late final HomeStore _homeRepository;
@@ -88,9 +95,11 @@ class _MessageWorkspaceScreenState extends State<MessageWorkspaceScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _messages = MessageController(widget.messages)..addListener(_refresh);
     _members = widget.members;
     _authentication = widget.authentication;
+    _session = widget.session;
     _workspace = widget.workspace;
     _handoverRepository = widget.handovers;
     _homeRepository = widget.home;
@@ -152,12 +161,41 @@ class _MessageWorkspaceScreenState extends State<MessageWorkspaceScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _composer.dispose();
     _search.dispose();
     _messages
       ..removeListener(_refresh)
       ..dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        if (_session.resume()) _lockExpiredSession();
+        return;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+        _session.background();
+        return;
+    }
+  }
+
+  Future<void> _lockExpiredSession() async {
+    _messages.clearSensitiveCache();
+    _update(() {
+      _view.currentAuthor = null;
+      _view.recipientIds = {};
+      _view.handovers = const [];
+      _view.tasks = const [];
+      _view.systemEvents = const [];
+    });
+    await _messages.setViewer(null, reloadConversation: !_view.homeMode);
+    await _loadWorkspace(selectId: _view.selected?.id);
   }
 
   Future<void> _selectConversation(Conversation conversation) async {
