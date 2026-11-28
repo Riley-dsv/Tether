@@ -13,7 +13,11 @@ abstract final class MessageTables {
       deleted_at TEXT,
       pin_hash TEXT,
       pin_salt TEXT,
-      pin_iterations INTEGER
+      pin_iterations INTEGER,
+      pin_kdf TEXT,
+      pin_version INTEGER,
+      pin_memory INTEGER,
+      pin_parallelism INTEGER
     )
   ''';
 

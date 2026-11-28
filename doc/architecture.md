@@ -47,7 +47,9 @@ outside SQLite. Searches decrypt only rows already selected by access-control
 filters and compare their content in memory.
 
 Member PINs are profile access gates, not encryption keys. They must not be used
-as message keys or treated as a replacement for platform/device security.
+as message keys or treated as a replacement for platform/device security. New
+PIN verifiers use versioned Argon2id parameters and unique random salts. Legacy
+PBKDF2 verifiers are upgraded only after successful authentication.
 
 ## Database migrations
 

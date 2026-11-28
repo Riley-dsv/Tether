@@ -117,8 +117,14 @@ Protected content must not be disclosed through a secondary feature:
 - A PIN must never be stored in plaintext.
 - Each credential must use an independently generated salt. Equal PINs must not
   produce equal stored verifiers.
-- PIN derivation must use the recorded work factor and constant-time verifier
-  comparison. Expensive derivation must not block the UI isolate.
+- New PIN verifiers must use Argon2id with a unique cryptographically random
+  salt. The stored format must include a version, KDF identifier, memory cost,
+  pass count, and parallelism. Verification must use those recorded parameters
+  and a constant-time comparison.
+- Legacy PBKDF2-SHA256 verifiers may remain readable only for compatibility.
+  After successful legacy verification they must be replaced with a newly
+  salted current Argon2id verifier; failed verification must not rewrite them.
+- Expensive derivation must not block the UI isolate.
 - Database migrations must preserve existing verifier, salt, and work-factor
   values exactly unless an explicit authenticated credential upgrade is being
   performed.
@@ -130,6 +136,9 @@ Protected content must not be disclosed through a secondary feature:
   factors, and target existing real member rows only.
 - Backup and restoration must preserve archived state and must not manufacture
   an authenticatable Unknown or Collective identity.
+- A device-bound pepper may be added through Android Keystore protection only
+  with an explicit loss, restore, and re-enrollment design. It must not be
+  enabled in a way that silently makes valid backups impossible to restore.
 
 ## Required verification
 

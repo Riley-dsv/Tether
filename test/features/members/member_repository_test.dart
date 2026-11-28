@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:cryptography/cryptography.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:note_app/database/app_database.dart';
 import 'package:note_app/features/groups/workspace_repository.dart';
@@ -21,6 +24,8 @@ void main() {
       database,
       pinCodec: MemberPinCodec(
         iterations: 10,
+        memory: 32,
+        parallelism: 1,
         runInBackground: false,
         createSalt: () => List<int>.generate(16, (index) => index),
       ),
@@ -53,6 +58,10 @@ void main() {
     expect(row['pin_hash'], isNot('2468'));
     expect(row['pin_salt'], isNotNull);
     expect(row['pin_iterations'], 10);
+    expect(row['pin_kdf'], 'argon2id');
+    expect(row['pin_version'], 2);
+    expect(row['pin_memory'], 32);
+    expect(row['pin_parallelism'], 1);
     expect(await members.verifyPin(memberId: member.id, pin: '2468'), isTrue);
     expect(await members.verifyPin(memberId: member.id, pin: '1111'), isFalse);
   });
@@ -73,6 +82,43 @@ void main() {
 
     expect((await members.members()).single.hasPin, isTrue);
     expect(await members.verifyPin(memberId: legacy.id, pin: '9876'), isTrue);
+  });
+
+  test('successful legacy verification upgrades PBKDF2 to Argon2id', () async {
+    final db = await database.database;
+    final salt = List<int>.filled(16, 8);
+    final legacyKey = await Pbkdf2.hmacSha256(
+      iterations: 10,
+      bits: 256,
+    ).deriveKeyFromPassword(password: '2468', nonce: salt);
+    await db.insert('members', {
+      'id': 'legacy_pbkdf2',
+      'display_name': 'Legacy PBKDF2',
+      'created_at': DateTime.utc(2026).toIso8601String(),
+      'pin_hash': base64Encode(await legacyKey.extractBytes()),
+      'pin_salt': base64Encode(salt),
+      'pin_iterations': 10,
+      'pin_kdf': 'pbkdf2-sha256',
+      'pin_version': 1,
+    });
+
+    expect(
+      await members.verifyPin(memberId: 'legacy_pbkdf2', pin: '2468'),
+      isTrue,
+    );
+    final upgraded = (await db.query(
+      'members',
+      where: 'id = ?',
+      whereArgs: ['legacy_pbkdf2'],
+    )).single;
+    expect(upgraded['pin_kdf'], 'argon2id');
+    expect(upgraded['pin_version'], 2);
+    expect(upgraded['pin_memory'], 32);
+    expect(upgraded['pin_parallelism'], 1);
+    expect(
+      upgraded['pin_hash'],
+      isNot(base64Encode(await legacyKey.extractBytes())),
+    );
   });
 
   test('rejects PINs outside the numeric policy', () async {

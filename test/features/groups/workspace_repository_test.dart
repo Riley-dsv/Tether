@@ -22,6 +22,8 @@ void main() {
       database,
       pinCodec: MemberPinCodec(
         iterations: 10,
+        memory: 32,
+        parallelism: 1,
         runInBackground: false,
         createSalt: () => List<int>.filled(16, 7),
       ),
