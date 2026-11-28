@@ -11,11 +11,14 @@ import 'package:note_app/features/messages/message.dart';
 import 'package:note_app/features/messages/message_cipher.dart';
 import 'package:note_app/features/messages/message_repository.dart';
 import 'package:note_app/features/members/member_repository.dart';
+import 'package:note_app/features/members/member_authenticator.dart';
+import 'package:note_app/features/members/attribution_identity.dart';
 import 'package:note_app/features/system_log/system_event.dart';
 import 'package:note_app/features/system_log/system_log_repository.dart';
 import 'package:note_app/features/tasks/task.dart';
 import 'package:note_app/features/tasks/task_repository.dart';
 import 'package:note_app/features/members/system_member.dart';
+import 'package:note_app/features/members/member_session.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
@@ -38,6 +41,7 @@ void main() {
           ),
           messages: _EmptyRepository(),
           members: _EmptyMemberStore(),
+          authentication: _FakeAuthentication(),
           workspace: _EmptyWorkspaceRepository(),
         ),
       ),
@@ -69,6 +73,7 @@ void main() {
           ),
           messages: _EmptyRepository(),
           members: _EmptyMemberStore(),
+          authentication: _FakeAuthentication(),
           workspace: _EmptyWorkspaceRepository(),
         ),
       ),
@@ -94,6 +99,7 @@ void main() {
           ),
           messages: _EmptyRepository(),
           members: _PopulatedMemberStore(),
+          authentication: _FakeAuthentication(),
           workspace: _PopulatedWorkspaceRepository(),
           tasks: _EmptyTaskStore(),
           handovers: _EmptyHandoverStore(),
@@ -118,6 +124,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.byKey(const Key('message-author-morgan')));
     await tester.tap(find.byKey(const Key('message-author-morgan')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('unlock-member-pin')), '1234');
+    await tester.tap(find.text('Unlock'));
     await tester.pumpAndSettle();
     expect(
       tester.widget<Text>(find.byKey(const Key('message-current-author'))).data,
@@ -144,6 +153,114 @@ void main() {
     await tester.tap(find.text('Log'));
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('System log'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('anonymous identity never requests PIN setup or verification', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final members = _TrackingMemberStore();
+    final authentication = _TrackingAuthentication();
+
+    await tester.pumpWidget(
+      TetherApp(
+        dependencies: AppDependencies(
+          database: AppDatabase(
+            factory: databaseFactoryFfi,
+            path: inMemoryDatabasePath,
+          ),
+          messages: _EmptyRepository(),
+          members: members,
+          authentication: authentication,
+          workspace: _PopulatedWorkspaceRepository(),
+        ),
+      ),
+    );
+    for (var frame = 0; frame < 20; frame++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    await tester.tap(find.text('Messages'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const Key('message-author-selector')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('message-author-unknown')));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<Text>(find.byKey(const Key('message-current-author'))).data,
+      'Unknown',
+    );
+    expect(find.byKey(const Key('unlock-member-pin')), findsNothing);
+    expect(find.text('Set PIN'), findsNothing);
+    expect(members.verifyPinCalls, 0);
+    expect(members.setPinCalls, 0);
+    expect(authentication.calls, 0);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('timeout closes protected routes and Back cannot reopen them', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      TetherApp(
+        dependencies: AppDependencies(
+          database: AppDatabase(
+            factory: databaseFactoryFfi,
+            path: inMemoryDatabasePath,
+          ),
+          messages: _EmptyRepository(),
+          members: _PopulatedMemberStore(),
+          authentication: _FakeAuthentication(),
+          session: MemberSession(backgroundTimeout: Duration.zero),
+          workspace: _PopulatedWorkspaceRepository(),
+        ),
+      ),
+    );
+    for (var frame = 0; frame < 20; frame++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    await tester.tap(find.text('Messages'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const Key('message-author-selector')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('message-author-morgan')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('unlock-member-pin')), '1234');
+    await tester.tap(find.text('Unlock'));
+    await tester.pumpAndSettle();
+    expect(find.text('Morgan'), findsWidgets);
+
+    await tester.tap(find.byKey(const Key('message-author-selector')));
+    await tester.pumpAndSettle();
+    expect(find.text('Who is writing?'), findsOneWidget);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Who is writing?'), findsNothing);
+    expect(
+      tester.widget<Text>(find.byKey(const Key('message-current-author'))).data,
+      'Unknown',
+    );
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('Who is writing?'), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
@@ -175,14 +292,28 @@ class _PopulatedWorkspaceRepository extends _EmptyWorkspaceRepository {
   ];
 }
 
-final _testMember = SystemMember.fromStorage(id: 'morgan', name: 'Morgan');
+final _testMember = SystemMember.fromStorage(
+  id: 'morgan',
+  name: 'Morgan',
+  hasPin: true,
+);
 
 class _EmptyMemberStore implements MemberStore {
   @override
   Future<List<SystemMember>> members() async => const [];
 
   @override
-  Future<SystemMember> createMember(String displayName) =>
+  Future<SystemMember> createMember(
+    String displayName, {
+    required String pin,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<void> setPin({required String memberId, required String pin}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<bool> verifyPin({required String memberId, required String pin}) =>
       throw UnimplementedError();
 
   @override
@@ -198,6 +329,59 @@ class _EmptyMemberStore implements MemberStore {
 class _PopulatedMemberStore extends _EmptyMemberStore {
   @override
   Future<List<SystemMember>> members() async => [_testMember];
+
+  @override
+  Future<bool> verifyPin({
+    required String memberId,
+    required String pin,
+  }) async => memberId == _testMember.id && pin == '1234';
+}
+
+class _TrackingMemberStore extends _PopulatedMemberStore {
+  int verifyPinCalls = 0;
+  int setPinCalls = 0;
+
+  @override
+  Future<bool> verifyPin({
+    required String memberId,
+    required String pin,
+  }) async {
+    verifyPinCalls++;
+    return super.verifyPin(memberId: memberId, pin: pin);
+  }
+
+  @override
+  Future<void> setPin({required String memberId, required String pin}) async {
+    setPinCalls++;
+  }
+}
+
+class _FakeAuthentication implements MemberAuthentication {
+  @override
+  Future<AuthenticationResult> authenticate(
+    AttributionIdentity identity,
+    String pin,
+  ) async => AuthenticationResult.granted;
+
+  @override
+  Future<AuthenticationResult> changePin({
+    required AttributionIdentity identity,
+    required String currentPin,
+    required String newPin,
+  }) async => AuthenticationResult.granted;
+}
+
+class _TrackingAuthentication extends _FakeAuthentication {
+  int calls = 0;
+
+  @override
+  Future<AuthenticationResult> authenticate(
+    AttributionIdentity identity,
+    String pin,
+  ) async {
+    calls++;
+    return super.authenticate(identity, pin);
+  }
 }
 
 class _EmptyRepository extends MessageRepository {

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:note_app/database/app_database.dart';
 import 'package:note_app/features/groups/workspace_repository.dart';
 import 'package:note_app/features/members/member_repository.dart';
+import 'package:note_app/features/members/member_pin.dart';
 import 'package:note_app/features/system_log/system_log_repository.dart';
 import 'package:note_app/features/tasks/task.dart';
 import 'package:note_app/features/tasks/task_repository.dart';
@@ -21,15 +22,15 @@ void main() {
       path: inMemoryDatabasePath,
     );
     workspace = WorkspaceRepository(database);
-    members = MemberRepository(database);
+    members = MemberRepository(database, pinCodec: _testPinCodec());
     tasks = TaskRepository(database);
   });
 
   tearDown(() => database.close());
 
   test('persists anyone and multiple-assignee task modes', () async {
-    final alice = await members.createMember('Alice');
-    final morgan = await members.createMember('Morgan');
+    final alice = await members.createMember('Alice', pin: '1234');
+    final morgan = await members.createMember('Morgan', pin: '1234');
     final conversation = await workspace.createConversation(
       title: 'Shared space',
       memberIds: {alice.id, morgan.id},
@@ -107,7 +108,7 @@ void main() {
   });
 
   test('specific assignment requires at least one assignee', () async {
-    final alice = await members.createMember('Alice');
+    final alice = await members.createMember('Alice', pin: '1234');
     final conversation = await workspace.createConversation(
       title: 'Home',
       memberIds: {alice.id},
@@ -125,3 +126,9 @@ void main() {
     );
   });
 }
+
+MemberPinCodec _testPinCodec() => MemberPinCodec(
+  iterations: 10,
+  runInBackground: false,
+  createSalt: () => List<int>.filled(16, 7),
+);

@@ -21,7 +21,9 @@ void main() {
       await database.close();
       await databaseFactory.deleteDatabase(databasePath);
     });
-    final morgan = await MemberRepository(database).createMember('Morgan');
+    final morgan = await MemberRepository(
+      database,
+    ).createMember('Morgan', pin: '1234');
     final dependencies = AppDependencies(database: database);
 
     await tester.pumpWidget(TetherApp(dependencies: dependencies));
@@ -31,6 +33,9 @@ void main() {
     await tester.tap(find.byKey(const Key('message-author-selector')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(Key('message-author-${morgan.id}')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('unlock-member-pin')), '1234');
+    await tester.tap(find.text('Unlock'));
     await tester.pumpAndSettle();
 
     await tester.enterText(

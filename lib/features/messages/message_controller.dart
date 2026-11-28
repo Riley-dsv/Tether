@@ -172,6 +172,21 @@ class MessageController extends ChangeNotifier {
     await load(showLoading: true);
   }
 
+  /// Immediately removes viewer-scoped plaintext and invalidates stale loads.
+  void clearSensitiveCache() {
+    _searchDebounce?.cancel();
+    _requestGeneration++;
+    viewerId = null;
+    messages = const [];
+    unreadCount = 0;
+    query = '';
+    pinnedOnly = false;
+    hasMore = false;
+    loadingMore = false;
+    error = null;
+    notifyListeners();
+  }
+
   /// Selects a conversation and resets conversation-scoped filters/pages.
   Future<void> selectConversation(String? id) async {
     _searchDebounce?.cancel();
@@ -233,7 +248,7 @@ class MessageController extends ChangeNotifier {
 
   /// Loads the complete immutable revision history for [message].
   Future<List<MessageRevision>> history(Message message) =>
-      _repository.history(message.id);
+      _repository.history(message.id, viewerId: viewerId);
 
   /// Copies decrypted content into another space with a source relationship.
   Future<void> transfer({

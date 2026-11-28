@@ -42,6 +42,62 @@ extension _WorkspaceActions on _MessageWorkspaceScreenState {
   }
 
   Future<void> _changeCurrentMember(SystemMember? member) async {
+    if (member?.id == _view.currentAuthor?.id) return;
+    if (member != null) {
+      final authorized = await _authorizeMember(member);
+      if (authorized == null) return;
+      member = authorized;
+    }
+    await _activateCurrentMember(member);
+  }
+
+  Future<SystemMember?> _authorizeMember(SystemMember member) async {
+    if (member.hasPin) {
+      final unlocked = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => UnlockMemberDialog(
+          member: member,
+          verify: (pin) async {
+            final result = await _authentication.authenticate(
+              MemberAttribution(member),
+              pin,
+            );
+            return result == AuthenticationResult.granted;
+          },
+        ),
+      );
+      return unlocked == true ? member : null;
+    }
+
+    final choice = await showDialog<MissingPinChoice>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => MissingMemberPinDialog(member: member),
+    );
+    if (choice == MissingPinChoice.later) return member;
+    if (choice != MissingPinChoice.setNow || !mounted) return null;
+    final pin = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => SetMemberPinDialog(member: member),
+    );
+    if (pin == null) return null;
+    await _members.setPin(memberId: member.id, pin: pin);
+    return SystemMember.fromStorage(
+      id: member.id,
+      name: member.name,
+      hasPin: true,
+    );
+  }
+
+  Future<void> _activateCurrentMember(SystemMember? member) async {
+    _messages.clearSensitiveCache();
+    if (member == null) {
+      _session.useAnonymous();
+    } else {
+      _session.activate(member);
+    }
     _update(() => _view.currentAuthor = member);
     await _messages.setViewer(member?.id, reloadConversation: !_view.homeMode);
     await _loadWorkspace(selectId: _view.selected?.id);
@@ -110,8 +166,10 @@ extension _WorkspaceActions on _MessageWorkspaceScreenState {
       return;
     }
     final member = action.member!;
+    final authorizedMember = await _authorizeMember(member);
+    if (authorizedMember == null || !mounted) return;
     if (action.type == MemberManagementActionType.rename) {
-      final controller = TextEditingController(text: member.name);
+      final controller = TextEditingController(text: authorizedMember.name);
       final name = await showDialog<String>(
         context: context,
         builder: (context) => AlertDialog(
@@ -134,13 +192,13 @@ extension _WorkspaceActions on _MessageWorkspaceScreenState {
         ),
       );
       controller.dispose();
-      if (name == null || name.isEmpty || name == member.name) return;
+      if (name == null || name.isEmpty || name == authorizedMember.name) return;
       final renamed = await _members.renameMember(
-        memberId: member.id,
+        memberId: authorizedMember.id,
         displayName: name,
       );
       if (_view.currentAuthor?.id == renamed.id) {
-        await _changeCurrentMember(renamed);
+        await _activateCurrentMember(renamed);
       } else {
         await _loadWorkspace(selectId: _view.selected?.id);
       }
@@ -150,7 +208,7 @@ extension _WorkspaceActions on _MessageWorkspaceScreenState {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Remove ${member.name}?'),
+        title: Text('Remove ${authorizedMember.name}?'),
         content: const Text(
           'The profile will no longer be selectable. Existing messages and history will keep their attribution.',
         ),
@@ -167,9 +225,9 @@ extension _WorkspaceActions on _MessageWorkspaceScreenState {
       ),
     );
     if (confirmed != true) return;
-    await _members.archiveMember(member.id);
-    if (_view.currentAuthor?.id == member.id) {
-      await _changeCurrentMember(null);
+    await _members.archiveMember(authorizedMember.id);
+    if (_view.currentAuthor?.id == authorizedMember.id) {
+      await _activateCurrentMember(null);
     } else {
       await _loadWorkspace(selectId: _view.selected?.id);
     }

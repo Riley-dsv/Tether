@@ -1,5 +1,6 @@
 import 'package:note_app/database/app_database.dart';
 import 'package:note_app/database/tables/message_tables.dart';
+import 'package:note_app/features/members/member_pin.dart';
 import 'package:note_app/features/members/system_member.dart';
 import 'package:note_app/features/system_log/system_log_repository.dart';
 
@@ -9,7 +10,13 @@ abstract interface class MemberStore {
   Future<List<SystemMember>> members();
 
   /// Creates a member and automatically joins them to the general space.
-  Future<SystemMember> createMember(String displayName);
+  Future<SystemMember> createMember(String displayName, {required String pin});
+
+  /// Adds or replaces the PIN verifier for an existing active member.
+  Future<void> setPin({required String memberId, required String pin});
+
+  /// Verifies [pin] against the member's stored salted verifier.
+  Future<bool> verifyPin({required String memberId, required String pin});
 
   /// Changes presentation identity without rewriting historical attribution.
   Future<SystemMember> renameMember({
@@ -27,9 +34,11 @@ abstract interface class MemberStore {
 /// Archiving is deliberately soft so historical authorship remains valid.
 class MemberRepository implements MemberStore {
   /// Creates a member repository over [AppDatabase].
-  MemberRepository(this._appDatabase);
+  MemberRepository(this._appDatabase, {MemberPinCodec? pinCodec})
+    : _pinCodec = pinCodec ?? MemberPinCodec();
 
   final AppDatabase _appDatabase;
+  final MemberPinCodec _pinCodec;
   int _sequence = 0;
 
   @override
@@ -45,15 +54,23 @@ class MemberRepository implements MemberStore {
           (row) => SystemMember.fromStorage(
             id: row['id'] as String,
             name: row['display_name'] as String,
+            hasPin: row['pin_hash'] != null,
           ),
         )
         .toList(growable: false);
   }
 
   @override
-  Future<SystemMember> createMember(String displayName) async {
+  Future<SystemMember> createMember(
+    String displayName, {
+    required String pin,
+  }) async {
     final name = displayName.trim();
     if (name.isEmpty) throw ArgumentError.value(displayName, 'displayName');
+    if (_isReservedIdentity(name)) {
+      throw ArgumentError.value(displayName, 'displayName');
+    }
+    final verifier = await _pinCodec.derive(pin);
     final db = await _appDatabase.database;
     final id = _newId();
     final now = DateTime.now().toUtc().toIso8601String();
@@ -62,6 +79,9 @@ class MemberRepository implements MemberStore {
         'id': id,
         'display_name': name,
         'created_at': now,
+        'pin_hash': verifier.hash,
+        'pin_salt': verifier.salt,
+        'pin_iterations': verifier.iterations,
       });
       await txn.insert('conversation_members', {
         'conversation_id': MessageTables.generalConversationId,
@@ -74,7 +94,59 @@ class MemberRepository implements MemberStore {
         summary: 'created member profile “$name”',
       );
     });
-    return SystemMember.fromStorage(id: id, name: name);
+    return SystemMember.fromStorage(id: id, name: name, hasPin: true);
+  }
+
+  @override
+  Future<void> setPin({required String memberId, required String pin}) async {
+    if (_isReservedIdentity(memberId)) {
+      throw StateError('Anonymous attribution cannot own credentials');
+    }
+    final verifier = await _pinCodec.derive(pin);
+    final db = await _appDatabase.database;
+    await db.transaction((txn) async {
+      final updated = await txn.update(
+        'members',
+        {
+          'pin_hash': verifier.hash,
+          'pin_salt': verifier.salt,
+          'pin_iterations': verifier.iterations,
+        },
+        where: 'id = ? AND deleted_at IS NULL',
+        whereArgs: [memberId],
+      );
+      if (updated == 0) throw StateError('Member no longer exists');
+      await SystemLogRepository.record(
+        txn,
+        type: 'member_pin_set',
+        summary: 'protected a member profile with a PIN',
+      );
+    });
+  }
+
+  @override
+  Future<bool> verifyPin({
+    required String memberId,
+    required String pin,
+  }) async {
+    final db = await _appDatabase.database;
+    final rows = await db.query(
+      'members',
+      columns: ['pin_hash', 'pin_salt', 'pin_iterations'],
+      where: 'id = ? AND deleted_at IS NULL',
+      whereArgs: [memberId],
+      limit: 1,
+    );
+    if (rows.isEmpty) throw StateError('Member no longer exists');
+    final row = rows.single;
+    final hash = row['pin_hash'] as String?;
+    final salt = row['pin_salt'] as String?;
+    final iterations = row['pin_iterations'] as int?;
+    if (hash == null || salt == null || iterations == null) return false;
+    return _pinCodec.verify(
+      pin,
+      MemberPinVerifier(hash: hash, salt: salt, iterations: iterations),
+    );
   }
 
   @override
@@ -99,7 +171,18 @@ class MemberRepository implements MemberStore {
         summary: 'renamed a member profile to “$name”',
       );
     });
-    return SystemMember.fromStorage(id: memberId, name: name);
+    final rows = await db.query(
+      'members',
+      columns: ['pin_hash'],
+      where: 'id = ?',
+      whereArgs: [memberId],
+      limit: 1,
+    );
+    return SystemMember.fromStorage(
+      id: memberId,
+      name: name,
+      hasPin: rows.single['pin_hash'] != null,
+    );
   }
 
   @override
@@ -124,5 +207,12 @@ class MemberRepository implements MemberStore {
   String _newId() {
     final now = DateTime.now().microsecondsSinceEpoch;
     return 'member_${now}_${_sequence++}';
+  }
+
+  static bool _isReservedIdentity(String value) {
+    final normalized = value.trim().toLowerCase();
+    return normalized == 'unknown' ||
+        normalized == 'anonymous' ||
+        normalized == 'collective';
   }
 }

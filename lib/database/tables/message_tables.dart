@@ -10,7 +10,10 @@ abstract final class MessageTables {
       id TEXT PRIMARY KEY,
       display_name TEXT NOT NULL,
       created_at TEXT NOT NULL,
-      deleted_at TEXT
+      deleted_at TEXT,
+      pin_hash TEXT,
+      pin_salt TEXT,
+      pin_iterations INTEGER
     )
   ''';
 
@@ -35,6 +38,15 @@ abstract final class MessageTables {
       member_id TEXT NOT NULL REFERENCES members(id),
       joined_at TEXT NOT NULL,
       PRIMARY KEY (conversation_id, member_id)
+    )
+  ''';
+
+  static const createAuthenticationSecurity = '''
+    CREATE TABLE authentication_security (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      failed_attempts INTEGER NOT NULL DEFAULT 0,
+      blocked_until TEXT,
+      updated_at TEXT NOT NULL
     )
   ''';
 

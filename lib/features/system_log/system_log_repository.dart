@@ -67,7 +67,21 @@ class SystemLogRepository implements SystemLogStore {
         AND (
           (event.related_message_id IS NULL
             AND event.related_handover_id IS NULL
-            AND event.related_task_id IS NULL)
+            AND event.related_task_id IS NULL
+            AND (
+              event.conversation_id IS NULL
+              OR EXISTS (
+                SELECT 1 FROM conversations event_conversation
+                WHERE event_conversation.id = event.conversation_id AND (
+                  event_conversation.scope = 'general'
+                  OR EXISTS (
+                    SELECT 1 FROM conversation_members event_access
+                    WHERE event_access.conversation_id = event_conversation.id
+                      AND event_access.member_id = ?
+                  )
+                )
+              )
+            ))
           OR EXISTS (
             SELECT 1 FROM message_entities message
             LEFT JOIN message_revisions revision ON revision.logical_id = message.id
@@ -99,6 +113,7 @@ class SystemLogRepository implements SystemLogStore {
     ''',
       [
         includeTechnical ? 1 : 0,
+        viewerId,
         viewerId,
         viewerId,
         viewerId,

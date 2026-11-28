@@ -25,6 +25,23 @@ void main() {
     expect(controller.hasMore, isFalse);
     expect(controller.messages.last.text, 'Message 0');
   });
+
+  test('locking clears cached private message data', () async {
+    final controller = MessageController(_PagedMessageStore(2))
+      ..viewerId = 'alice';
+    addTearDown(controller.dispose);
+    await controller.selectConversation('private-space');
+    controller.search('private phrase');
+
+    controller.clearSensitiveCache();
+
+    expect(controller.viewerId, isNull);
+    expect(controller.messages, isEmpty);
+    expect(controller.unreadCount, 0);
+    expect(controller.query, isEmpty);
+    expect(controller.pinnedOnly, isFalse);
+    expect(controller.hasMore, isFalse);
+  });
 }
 
 class _PagedMessageStore implements MessageStore {
@@ -96,7 +113,7 @@ class _PagedMessageStore implements MessageStore {
     String? editedById,
   }) => throw UnimplementedError();
   @override
-  Future<List<MessageRevision>> history(String messageId) =>
+  Future<List<MessageRevision>> history(String messageId, {String? viewerId}) =>
       throw UnimplementedError();
   @override
   Future<void> markSeen({

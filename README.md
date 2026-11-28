@@ -147,7 +147,10 @@ dart doc
 ```
 
 The generated site is written to `doc/api/` and is intentionally ignored by
-Git. Broader architectural invariants are documented in `doc/architecture.md`.
+Git. Broader architectural invariants are documented in
+[`doc/architecture.md`](doc/architecture.md), with the normative authentication,
+session, authorization, and recovery contract in
+[`doc/security-invariants.md`](doc/security-invariants.md).
 
 ## Continuous integration
 
@@ -158,10 +161,10 @@ The GitHub Actions workflow in `.github/workflows/ci.yml` checks formatting and 
 The project is under active development. Important future work includes:
 
 - encryption for non-message content and metadata;
-- fast locking and secure unlock flows;
+- optional device-wide/biometric locking beyond per-profile PIN sessions;
 - native scheduled notifications for reminders;
 - fuller calendar and event support;
-- backup and recovery that preserve local ownership and privacy;
+- full encrypted workspace backup beyond credential-verifier recovery;
 - accessibility and performance testing across more Android devices.
 
 ## Contributing

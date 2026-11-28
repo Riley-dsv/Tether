@@ -15,6 +15,11 @@ unspecified. It never refers to a synthetic “Unknown” database member. Code 
 not invent a primary member or require attribution where the domain permits an
 anonymous action.
 
+Authentication, attribution, session isolation, authorization, and credential
+recovery are governed by the normative
+[security invariants](security-invariants.md). Architecture changes touching
+those concerns must preserve that contract and its automated tests.
+
 ## Message history
 
 `message_entities` contains the stable logical identity of a message.
@@ -28,6 +33,11 @@ Visibility and conversation membership are separate checks. A member must have
 access to the conversation and, for targeted messages, be the author or an
 explicit recipient. Shared messages may be read without attributing the viewer.
 
+Widgets do not grant visibility. Production stores are wrapped by
+session-bound application services that validate requested member identifiers
+against the active authenticated session. Repository queries remain responsible
+for object-level filtering, providing a second enforcement boundary.
+
 ## Encryption
 
 Every non-deletion message revision is encrypted independently with AES-256-GCM.
@@ -35,6 +45,9 @@ The logical message ID and revision number are authenticated as associated data,
 so ciphertext cannot be moved between revisions. The master key is stored
 outside SQLite. Searches decrypt only rows already selected by access-control
 filters and compare their content in memory.
+
+Member PINs are profile access gates, not encryption keys. They must not be used
+as message keys or treated as a replacement for platform/device security.
 
 ## Database migrations
 

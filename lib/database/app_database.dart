@@ -46,6 +46,12 @@ class AppDatabase {
             await txn.execute(MessageTables.createMembers);
             await txn.execute(MessageTables.createConversations);
             await txn.execute(MessageTables.createConversationMembers);
+            await txn.execute(MessageTables.createAuthenticationSecurity);
+            await txn.insert('authentication_security', {
+              'id': 1,
+              'failed_attempts': 0,
+              'updated_at': DateTime.now().toUtc().toIso8601String(),
+            });
             await txn.execute(MessageTables.createGeneralConversationIndex);
             await txn.insert('conversations', {
               'id': MessageTables.generalConversationId,
