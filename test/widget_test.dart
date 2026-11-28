@@ -18,6 +18,7 @@ import 'package:note_app/features/system_log/system_log_repository.dart';
 import 'package:note_app/features/tasks/task.dart';
 import 'package:note_app/features/tasks/task_repository.dart';
 import 'package:note_app/features/members/system_member.dart';
+import 'package:note_app/features/members/member_session.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
@@ -200,6 +201,78 @@ void main() {
     expect(members.verifyPinCalls, 0);
     expect(members.setPinCalls, 0);
     expect(authentication.calls, 0);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('timeout closes protected routes and Back cannot reopen them', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      TetherApp(
+        dependencies: AppDependencies(
+          database: AppDatabase(
+            factory: databaseFactoryFfi,
+            path: inMemoryDatabasePath,
+          ),
+          messages: _EmptyRepository(),
+          members: _PopulatedMemberStore(),
+          authentication: _FakeAuthentication(),
+          session: MemberSession(backgroundTimeout: Duration.zero),
+          workspace: _PopulatedWorkspaceRepository(),
+        ),
+      ),
+    );
+    for (var frame = 0; frame < 20; frame++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    await tester.tap(find.text('Messages'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const Key('message-author-selector')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('message-author-morgan')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('unlock-member-pin')), '1234');
+    await tester.tap(find.text('Unlock'));
+    await tester.pumpAndSettle();
+    expect(find.text('Morgan'), findsWidgets);
+
+    await tester.tap(find.byKey(const Key('message-author-selector')));
+    await tester.pumpAndSettle();
+    expect(find.text('Who is writing?'), findsOneWidget);
+    tester.binding.handleAppLifecycleStateChanged(
+      AppLifecycleState.inactive,
+    );
+    tester.binding.handleAppLifecycleStateChanged(
+      AppLifecycleState.hidden,
+    );
+    tester.binding.handleAppLifecycleStateChanged(
+      AppLifecycleState.paused,
+    );
+    tester.binding.handleAppLifecycleStateChanged(
+      AppLifecycleState.hidden,
+    );
+    tester.binding.handleAppLifecycleStateChanged(
+      AppLifecycleState.inactive,
+    );
+    tester.binding.handleAppLifecycleStateChanged(
+      AppLifecycleState.resumed,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Who is writing?'), findsNothing);
+    expect(
+      tester.widget<Text>(find.byKey(const Key('message-current-author'))).data,
+      'Unknown',
+    );
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('Who is writing?'), findsNothing);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });

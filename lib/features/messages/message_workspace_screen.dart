@@ -186,6 +186,7 @@ class _MessageWorkspaceScreenState extends State<MessageWorkspaceScreen>
   }
 
   Future<void> _lockExpiredSession() async {
+    if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
     _messages.clearSensitiveCache();
     _update(() {
       _view.currentAuthor = null;
