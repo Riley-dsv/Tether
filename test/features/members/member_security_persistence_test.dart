@@ -15,6 +15,8 @@ void main() {
 
   MemberPinCodec codec() => MemberPinCodec(
     iterations: 10,
+    memory: 32,
+    parallelism: 1,
     runInBackground: false,
     createSalt: () => List<int>.filled(16, saltSequence++),
   );
@@ -57,7 +59,11 @@ void main() {
           memberId: 'unknown',
           hash: 'AQ==',
           salt: 'Ag==',
+          algorithm: 'argon2id',
+          version: 2,
           iterations: 10,
+          memory: 32,
+          parallelism: 1,
         ),
       ]),
       throwsStateError,
@@ -176,6 +182,8 @@ void main() {
     expect(row['pin_hash'], 'AQI=');
     expect(row['pin_salt'], 'AwQ=');
     expect(row['pin_iterations'], 10);
+    expect(row['pin_kdf'], 'pbkdf2-sha256');
+    expect(row['pin_version'], 1);
     expect(await db.query('authentication_security'), hasLength(1));
   });
 }

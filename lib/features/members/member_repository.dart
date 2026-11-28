@@ -82,6 +82,10 @@ class MemberRepository implements MemberStore {
         'pin_hash': verifier.hash,
         'pin_salt': verifier.salt,
         'pin_iterations': verifier.iterations,
+        'pin_kdf': verifier.algorithm,
+        'pin_version': verifier.version,
+        'pin_memory': verifier.memory,
+        'pin_parallelism': verifier.parallelism,
       });
       await txn.insert('conversation_members', {
         'conversation_id': MessageTables.generalConversationId,
@@ -111,6 +115,10 @@ class MemberRepository implements MemberStore {
           'pin_hash': verifier.hash,
           'pin_salt': verifier.salt,
           'pin_iterations': verifier.iterations,
+          'pin_kdf': verifier.algorithm,
+          'pin_version': verifier.version,
+          'pin_memory': verifier.memory,
+          'pin_parallelism': verifier.parallelism,
         },
         where: 'id = ? AND deleted_at IS NULL',
         whereArgs: [memberId],
@@ -132,7 +140,15 @@ class MemberRepository implements MemberStore {
     final db = await _appDatabase.database;
     final rows = await db.query(
       'members',
-      columns: ['pin_hash', 'pin_salt', 'pin_iterations'],
+      columns: [
+        'pin_hash',
+        'pin_salt',
+        'pin_iterations',
+        'pin_kdf',
+        'pin_version',
+        'pin_memory',
+        'pin_parallelism',
+      ],
       where: 'id = ? AND deleted_at IS NULL',
       whereArgs: [memberId],
       limit: 1,
@@ -143,10 +159,35 @@ class MemberRepository implements MemberStore {
     final salt = row['pin_salt'] as String?;
     final iterations = row['pin_iterations'] as int?;
     if (hash == null || salt == null || iterations == null) return false;
-    return _pinCodec.verify(
-      pin,
-      MemberPinVerifier(hash: hash, salt: salt, iterations: iterations),
+    final verifier = MemberPinVerifier(
+      hash: hash,
+      salt: salt,
+      algorithm:
+          row['pin_kdf'] as String? ?? MemberPinCodec.legacyPbkdf2Algorithm,
+      version: row['pin_version'] as int? ?? 1,
+      iterations: iterations,
+      memory: row['pin_memory'] as int?,
+      parallelism: row['pin_parallelism'] as int?,
     );
+    final accepted = await _pinCodec.verify(pin, verifier);
+    if (accepted && _pinCodec.needsUpgrade(verifier)) {
+      final upgraded = await _pinCodec.derive(pin);
+      await db.update(
+        'members',
+        {
+          'pin_hash': upgraded.hash,
+          'pin_salt': upgraded.salt,
+          'pin_iterations': upgraded.iterations,
+          'pin_kdf': upgraded.algorithm,
+          'pin_version': upgraded.version,
+          'pin_memory': upgraded.memory,
+          'pin_parallelism': upgraded.parallelism,
+        },
+        where: 'id = ? AND pin_hash = ?',
+        whereArgs: [memberId, hash],
+      );
+    }
+    return accepted;
   }
 
   @override
