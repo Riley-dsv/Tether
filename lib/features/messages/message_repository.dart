@@ -101,7 +101,7 @@ abstract interface class MessageStore {
   });
 
   /// Returns all decrypted revisions newest first, including tombstones.
-  Future<List<MessageRevision>> history(String messageId);
+  Future<List<MessageRevision>> history(String messageId, {String? viewerId});
 }
 
 /// SQLite implementation of [MessageStore].
@@ -222,6 +222,9 @@ class MessageRepository implements MessageStore {
       revision: 1,
     );
     await db.transaction((txn) async {
+      if (sourceMessageId != null) {
+        await _requireMessageAccess(txn, sourceMessageId, authorId);
+      }
       if (authorId != null) {
         await _requireConversationMember(txn, conversationId, authorId);
       }
@@ -293,6 +296,7 @@ class MessageRepository implements MessageStore {
       if (current['deleted_at'] != null) {
         throw StateError('Cannot edit a deleted message');
       }
+      await _requireMessageAccess(txn, messageId, editedById);
       if (editedById != null) {
         await _requireConversationMember(
           txn,
@@ -336,6 +340,7 @@ class MessageRepository implements MessageStore {
     await db.transaction((txn) async {
       final current = await _currentRevision(txn, messageId);
       if (current['deleted_at'] != null) return;
+      await _requireMessageAccess(txn, messageId, deletedById);
       if (deletedById != null) {
         await _requireConversationMember(
           txn,
@@ -385,6 +390,7 @@ class MessageRepository implements MessageStore {
       if (current['deleted_at'] != null) {
         throw StateError('Cannot pin a deleted message');
       }
+      await _requireMessageAccess(txn, messageId, actorId);
       if (actorId != null) {
         await _requireConversationMember(
           txn,
@@ -441,6 +447,7 @@ class MessageRepository implements MessageStore {
         current['conversation_id'] as String,
         memberId,
       );
+      await _requireMessageAccess(txn, messageId, memberId);
       final inserted = await _markSeen(
         txn,
         messageId,
@@ -494,9 +501,13 @@ class MessageRepository implements MessageStore {
   }
 
   @override
-  Future<List<MessageRevision>> history(String messageId) async {
+  Future<List<MessageRevision>> history(
+    String messageId, {
+    String? viewerId,
+  }) async {
     await _ensureEncryption();
     final db = await _appDatabase.database;
+    await _requireMessageAccess(db, messageId, viewerId);
     final rows = await db.query(
       'message_revisions',
       where: 'logical_id = ?',
@@ -555,6 +566,35 @@ class MessageRepository implements MessageStore {
     if (rows.isEmpty) {
       throw StateError('Member does not belong to this conversation');
     }
+  }
+
+  static Future<void> _requireMessageAccess(
+    DatabaseExecutor db,
+    String messageId,
+    String? viewerId,
+  ) async {
+    final rows = await db.rawQuery(
+      '''
+      SELECT 1
+      FROM message_entities entity
+      WHERE entity.id = ? AND (
+        entity.visibility = 'shared'
+        OR (? IS NOT NULL AND (
+          EXISTS (
+            SELECT 1 FROM message_revisions revision
+            WHERE revision.logical_id = entity.id AND revision.author_id = ?
+          )
+          OR EXISTS (
+            SELECT 1 FROM message_recipients recipient
+            WHERE recipient.logical_id = entity.id AND recipient.member_id = ?
+          )
+        ))
+      )
+      LIMIT 1
+      ''',
+      [messageId, viewerId, viewerId, viewerId],
+    );
+    if (rows.isEmpty) throw StateError('Message is not visible to this member');
   }
 
   Future<Message> _messageFromRow(Map<String, Object?> row) async {

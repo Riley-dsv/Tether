@@ -248,7 +248,7 @@ class MessageController extends ChangeNotifier {
 
   /// Loads the complete immutable revision history for [message].
   Future<List<MessageRevision>> history(Message message) =>
-      _repository.history(message.id);
+      _repository.history(message.id, viewerId: viewerId);
 
   /// Copies decrypted content into another space with a source relationship.
   Future<void> transfer({

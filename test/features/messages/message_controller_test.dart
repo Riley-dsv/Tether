@@ -113,7 +113,7 @@ class _PagedMessageStore implements MessageStore {
     String? editedById,
   }) => throw UnimplementedError();
   @override
-  Future<List<MessageRevision>> history(String messageId) =>
+  Future<List<MessageRevision>> history(String messageId, {String? viewerId}) =>
       throw UnimplementedError();
   @override
   Future<void> markSeen({

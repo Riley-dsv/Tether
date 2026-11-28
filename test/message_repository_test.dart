@@ -443,7 +443,7 @@ void main() {
       await repository.watchSnapshot(conversationId: conversationId),
       isEmpty,
     );
-    final history = await repository.history(created.id);
+    final history = await repository.history(created.id, viewerId: memberOneId);
     expect(history, hasLength(3));
     expect(history.first.isDeletion, isTrue);
     expect(history.last.content, 'Original appointment note');
