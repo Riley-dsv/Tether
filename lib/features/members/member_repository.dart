@@ -67,6 +67,9 @@ class MemberRepository implements MemberStore {
   }) async {
     final name = displayName.trim();
     if (name.isEmpty) throw ArgumentError.value(displayName, 'displayName');
+    if (_isReservedIdentity(name)) {
+      throw ArgumentError.value(displayName, 'displayName');
+    }
     final verifier = await _pinCodec.derive(pin);
     final db = await _appDatabase.database;
     final id = _newId();
@@ -96,6 +99,9 @@ class MemberRepository implements MemberStore {
 
   @override
   Future<void> setPin({required String memberId, required String pin}) async {
+    if (_isReservedIdentity(memberId)) {
+      throw StateError('Anonymous attribution cannot own credentials');
+    }
     final verifier = await _pinCodec.derive(pin);
     final db = await _appDatabase.database;
     await db.transaction((txn) async {
@@ -201,5 +207,12 @@ class MemberRepository implements MemberStore {
   String _newId() {
     final now = DateTime.now().microsecondsSinceEpoch;
     return 'member_${now}_${_sequence++}';
+  }
+
+  static bool _isReservedIdentity(String value) {
+    final normalized = value.trim().toLowerCase();
+    return normalized == 'unknown' ||
+        normalized == 'anonymous' ||
+        normalized == 'collective';
   }
 }
