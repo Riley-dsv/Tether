@@ -7,6 +7,7 @@ import 'package:note_app/features/messages/message_cipher.dart';
 import 'package:note_app/features/members/member_repository.dart';
 import 'package:note_app/features/members/member_authenticator.dart';
 import 'package:note_app/features/members/member_session.dart';
+import 'package:note_app/features/members/session_bound_stores.dart';
 import 'package:note_app/features/system_log/system_log_repository.dart';
 import 'package:note_app/features/tasks/task_repository.dart';
 
@@ -46,14 +47,19 @@ class AppDependencies {
   }) {
     final resolvedDatabase = database ?? AppDatabase();
     final resolvedMembers = members ?? MemberRepository(resolvedDatabase);
+    final resolvedSession = session ?? MemberSession();
+    final resolvedMessages =
+        messages ??
+        MessageRepository(
+          resolvedDatabase,
+          cipher: AesGcmMessageCipher(SecureStorageMessageKeyProvider()),
+        );
+    final resolvedHome = home ?? HomeRepository(resolvedDatabase);
+    final resolvedSystemLog =
+        systemLog ?? SystemLogRepository(resolvedDatabase);
     return AppDependencies._(
       database: resolvedDatabase,
-      messages:
-          messages ??
-          MessageRepository(
-            resolvedDatabase,
-            cipher: AesGcmMessageCipher(SecureStorageMessageKeyProvider()),
-          ),
+      messages: SessionBoundMessageStore(resolvedMessages, resolvedSession),
       members: resolvedMembers,
       authentication:
           authentication ??
@@ -61,11 +67,11 @@ class AppDependencies {
             database: resolvedDatabase,
             members: resolvedMembers,
           ),
-      session: session ?? MemberSession(),
+      session: resolvedSession,
       workspace: workspace ?? WorkspaceRepository(resolvedDatabase),
       handovers: handovers ?? HandoverRepository(resolvedDatabase),
-      home: home ?? HomeRepository(resolvedDatabase),
-      systemLog: systemLog ?? SystemLogRepository(resolvedDatabase),
+      home: SessionBoundHomeStore(resolvedHome, resolvedSession),
+      systemLog: SessionBoundSystemLogStore(resolvedSystemLog, resolvedSession),
       tasks: tasks ?? TaskRepository(resolvedDatabase),
       ownsDatabase: database == null,
     );

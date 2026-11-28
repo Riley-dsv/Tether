@@ -24,6 +24,9 @@ class MemberSession {
   String? get memberId => _memberId;
   bool get isAnonymous => _memberId == null;
 
+  /// Whether the current session owns [memberId].
+  bool permitsMember(String memberId) => _memberId == memberId;
+
   /// Revokes the previous identity and starts a fresh member session.
   MemberSessionLease activate(SystemMember member) {
     _generation++;

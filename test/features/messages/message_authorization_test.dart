@@ -118,6 +118,11 @@ void main() {
       recipient.where((event) => event.type == 'message_created'),
       hasLength(1),
     );
+    final anonymous = await systemLog.list();
+    expect(
+      anonymous.where((event) => event.conversationTitle == 'Everyone'),
+      isEmpty,
+    );
   });
 
   test('message transfer cannot bypass source authorization', () async {

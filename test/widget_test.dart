@@ -245,24 +245,12 @@ void main() {
     await tester.tap(find.byKey(const Key('message-author-selector')));
     await tester.pumpAndSettle();
     expect(find.text('Who is writing?'), findsOneWidget);
-    tester.binding.handleAppLifecycleStateChanged(
-      AppLifecycleState.inactive,
-    );
-    tester.binding.handleAppLifecycleStateChanged(
-      AppLifecycleState.hidden,
-    );
-    tester.binding.handleAppLifecycleStateChanged(
-      AppLifecycleState.paused,
-    );
-    tester.binding.handleAppLifecycleStateChanged(
-      AppLifecycleState.hidden,
-    );
-    tester.binding.handleAppLifecycleStateChanged(
-      AppLifecycleState.inactive,
-    );
-    tester.binding.handleAppLifecycleStateChanged(
-      AppLifecycleState.resumed,
-    );
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pumpAndSettle();
 
     expect(find.text('Who is writing?'), findsNothing);
