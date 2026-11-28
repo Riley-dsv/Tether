@@ -10,6 +10,7 @@ import 'package:note_app/database/migrations/migration_v9.dart';
 import 'package:note_app/database/migrations/migration_v10.dart';
 import 'package:note_app/database/migrations/migration_v11.dart';
 import 'package:note_app/database/migrations/migration_v12.dart';
+import 'package:note_app/database/migrations/migration_v13.dart';
 
 /// Ordered registry of every released database migration.
 ///
@@ -31,6 +32,7 @@ abstract final class AppMigrations {
     MigrationV10(),
     MigrationV11(),
     MigrationV12(),
+    MigrationV13(),
   ];
 
   /// Schema version expected by the current application.

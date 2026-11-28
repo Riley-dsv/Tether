@@ -58,7 +58,13 @@ extension _WorkspaceActions on _MessageWorkspaceScreenState {
         barrierDismissible: false,
         builder: (_) => UnlockMemberDialog(
           member: member,
-          verify: (pin) => _members.verifyPin(memberId: member.id, pin: pin),
+          verify: (pin) async {
+            final result = await _authentication.authenticate(
+              MemberAttribution(member),
+              pin,
+            );
+            return result == AuthenticationResult.granted;
+          },
         ),
       );
       return unlocked == true ? member : null;

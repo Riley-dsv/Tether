@@ -9,6 +9,8 @@ import 'package:note_app/features/messages/message.dart';
 import 'package:note_app/features/messages/message_controller.dart';
 import 'package:note_app/features/messages/message_repository.dart';
 import 'package:note_app/features/members/member_repository.dart';
+import 'package:note_app/features/members/member_authenticator.dart';
+import 'package:note_app/features/members/attribution_identity.dart';
 import 'package:note_app/shared/widgets/handovers/handover_widgets.dart';
 import 'package:note_app/shared/widgets/messages/message_widgets.dart';
 import 'package:note_app/features/messages/workspace_view_state.dart';
@@ -34,6 +36,7 @@ class MessageWorkspaceScreen extends StatefulWidget {
     super.key,
     required this.messages,
     required this.members,
+    required this.authentication,
     required this.workspace,
     required this.handovers,
     required this.home,
@@ -46,6 +49,9 @@ class MessageWorkspaceScreen extends StatefulWidget {
 
   /// Internal identity lifecycle store.
   final MemberStore members;
+
+  /// Member authentication and persisted throttling.
+  final MemberAuthentication authentication;
 
   /// Conversation and membership store.
   final WorkspaceStore workspace;
@@ -71,6 +77,7 @@ class _MessageWorkspaceScreenState extends State<MessageWorkspaceScreen> {
   final _search = TextEditingController();
   late final MessageController _messages;
   late final MemberStore _members;
+  late final MemberAuthentication _authentication;
   late final WorkspaceStore _workspace;
   late final HandoverStore _handoverRepository;
   late final HomeStore _homeRepository;
@@ -83,6 +90,7 @@ class _MessageWorkspaceScreenState extends State<MessageWorkspaceScreen> {
     super.initState();
     _messages = MessageController(widget.messages)..addListener(_refresh);
     _members = widget.members;
+    _authentication = widget.authentication;
     _workspace = widget.workspace;
     _handoverRepository = widget.handovers;
     _homeRepository = widget.home;

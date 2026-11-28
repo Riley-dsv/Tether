@@ -11,6 +11,8 @@ import 'package:note_app/features/messages/message.dart';
 import 'package:note_app/features/messages/message_cipher.dart';
 import 'package:note_app/features/messages/message_repository.dart';
 import 'package:note_app/features/members/member_repository.dart';
+import 'package:note_app/features/members/member_authenticator.dart';
+import 'package:note_app/features/members/attribution_identity.dart';
 import 'package:note_app/features/system_log/system_event.dart';
 import 'package:note_app/features/system_log/system_log_repository.dart';
 import 'package:note_app/features/tasks/task.dart';
@@ -38,6 +40,7 @@ void main() {
           ),
           messages: _EmptyRepository(),
           members: _EmptyMemberStore(),
+          authentication: _FakeAuthentication(),
           workspace: _EmptyWorkspaceRepository(),
         ),
       ),
@@ -69,6 +72,7 @@ void main() {
           ),
           messages: _EmptyRepository(),
           members: _EmptyMemberStore(),
+          authentication: _FakeAuthentication(),
           workspace: _EmptyWorkspaceRepository(),
         ),
       ),
@@ -94,6 +98,7 @@ void main() {
           ),
           messages: _EmptyRepository(),
           members: _PopulatedMemberStore(),
+          authentication: _FakeAuthentication(),
           workspace: _PopulatedWorkspaceRepository(),
           tasks: _EmptyTaskStore(),
           handovers: _EmptyHandoverStore(),
@@ -159,6 +164,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final members = _TrackingMemberStore();
+    final authentication = _TrackingAuthentication();
 
     await tester.pumpWidget(
       TetherApp(
@@ -169,6 +175,7 @@ void main() {
           ),
           messages: _EmptyRepository(),
           members: members,
+          authentication: authentication,
           workspace: _PopulatedWorkspaceRepository(),
         ),
       ),
@@ -192,6 +199,7 @@ void main() {
     expect(find.text('Set PIN'), findsNothing);
     expect(members.verifyPinCalls, 0);
     expect(members.setPinCalls, 0);
+    expect(authentication.calls, 0);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
@@ -284,6 +292,34 @@ class _TrackingMemberStore extends _PopulatedMemberStore {
   @override
   Future<void> setPin({required String memberId, required String pin}) async {
     setPinCalls++;
+  }
+}
+
+class _FakeAuthentication implements MemberAuthentication {
+  @override
+  Future<AuthenticationResult> authenticate(
+    AttributionIdentity identity,
+    String pin,
+  ) async => AuthenticationResult.granted;
+
+  @override
+  Future<AuthenticationResult> changePin({
+    required AttributionIdentity identity,
+    required String currentPin,
+    required String newPin,
+  }) async => AuthenticationResult.granted;
+}
+
+class _TrackingAuthentication extends _FakeAuthentication {
+  int calls = 0;
+
+  @override
+  Future<AuthenticationResult> authenticate(
+    AttributionIdentity identity,
+    String pin,
+  ) async {
+    calls++;
+    return super.authenticate(identity, pin);
   }
 }
 

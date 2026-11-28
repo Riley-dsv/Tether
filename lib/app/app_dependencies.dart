@@ -5,6 +5,7 @@ import 'package:note_app/features/home/home_repository.dart';
 import 'package:note_app/features/messages/message_repository.dart';
 import 'package:note_app/features/messages/message_cipher.dart';
 import 'package:note_app/features/members/member_repository.dart';
+import 'package:note_app/features/members/member_authenticator.dart';
 import 'package:note_app/features/system_log/system_log_repository.dart';
 import 'package:note_app/features/tasks/task_repository.dart';
 
@@ -15,6 +16,7 @@ class AppDependencies {
     required this.database,
     required this.messages,
     required this.members,
+    required this.authentication,
     required this.workspace,
     required this.handovers,
     required this.home,
@@ -32,6 +34,7 @@ class AppDependencies {
     AppDatabase? database,
     MessageStore? messages,
     MemberStore? members,
+    MemberAuthentication? authentication,
     WorkspaceStore? workspace,
     HandoverStore? handovers,
     HomeStore? home,
@@ -39,6 +42,7 @@ class AppDependencies {
     TaskStore? tasks,
   }) {
     final resolvedDatabase = database ?? AppDatabase();
+    final resolvedMembers = members ?? MemberRepository(resolvedDatabase);
     return AppDependencies._(
       database: resolvedDatabase,
       messages:
@@ -47,7 +51,13 @@ class AppDependencies {
             resolvedDatabase,
             cipher: AesGcmMessageCipher(SecureStorageMessageKeyProvider()),
           ),
-      members: members ?? MemberRepository(resolvedDatabase),
+      members: resolvedMembers,
+      authentication:
+          authentication ??
+          MemberAuthenticator(
+            database: resolvedDatabase,
+            members: resolvedMembers,
+          ),
       workspace: workspace ?? WorkspaceRepository(resolvedDatabase),
       handovers: handovers ?? HandoverRepository(resolvedDatabase),
       home: home ?? HomeRepository(resolvedDatabase),
@@ -65,6 +75,9 @@ class AppDependencies {
 
   /// Internal identity lifecycle persistence.
   final MemberStore members;
+
+  /// Persisted member authentication and global rate limiting.
+  final MemberAuthentication authentication;
 
   /// Conversation and membership persistence.
   final WorkspaceStore workspace;

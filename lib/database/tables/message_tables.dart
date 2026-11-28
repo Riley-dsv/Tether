@@ -41,6 +41,15 @@ abstract final class MessageTables {
     )
   ''';
 
+  static const createAuthenticationSecurity = '''
+    CREATE TABLE authentication_security (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      failed_attempts INTEGER NOT NULL DEFAULT 0,
+      blocked_until TEXT,
+      updated_at TEXT NOT NULL
+    )
+  ''';
+
   static const createMessageEntities = '''
     CREATE TABLE message_entities (
       id TEXT PRIMARY KEY,
